@@ -1,0 +1,93 @@
+<!-- 首页 -->
+<view class="container">
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="loading">
+    <view class="loading-icon"></view>
+    <view class="loading-text">加载中...</view>
+  </view>
+
+  <!-- 页面内容 -->
+  <view wx:else class="page-content">
+    <!-- 顶部社区信息 -->
+    <view class="community-header">
+      <view class="community-info" bindtap="switchCommunity">
+        <view class="community-name">{{currentCommunity.name || '选择小区'}}</view>
+        <view class="community-switch">
+          <text class="switch-text">切换</text>
+          <text class="switch-icon">▼</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 功能导航 -->
+    <view class="grid-nav">
+      <navigator url="/src/pages/notification/list" class="grid-item">
+        <image class="grid-icon" src="/src/assets/icons/notification.png"></image>
+        <text class="grid-text">通知公告</text>
+      </navigator>
+      <navigator url="/src/pages/workorder/create" class="grid-item">
+        <image class="grid-icon" src="/src/assets/icons/repair.png"></image>
+        <text class="grid-text">在线报修</text>
+      </navigator>
+      <navigator url="/src/pages/topic/list" class="grid-item">
+        <image class="grid-icon" src="/src/assets/icons/topic.png"></image>
+        <text class="grid-text">议事厅</text>
+      </navigator>
+      <navigator url="/src/pages/finance/list" class="grid-item">
+        <image class="grid-icon" src="/src/assets/icons/finance.png"></image>
+        <text class="grid-text">财务公示</text>
+      </navigator>
+    </view>
+
+    <!-- 通知公告 -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">通知公告</text>
+        <navigator url="/src/pages/notification/list" class="section-more">更多 ></navigator>
+      </view>
+      <view class="notification-list">
+        <view wx:if="{{notifications.length === 0}}" class="empty-tip">暂无通知</view>
+        <view wx:for="{{notifications}}" wx:key="id" class="notification-item" bindtap="viewNotification" data-id="{{item.id}}">
+          <view class="notification-title {{item.level === 'urgent' ? 'urgent' : ''}}">{{item.title}}</view>
+          <view class="notification-time">{{item.created_at}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 小区议题 -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">小区议题</text>
+        <navigator url="/src/pages/topic/list" class="section-more">更多 ></navigator>
+      </view>
+      <view class="topic-list">
+        <view wx:if="{{topics.length === 0}}" class="empty-tip">暂无议题</view>
+        <view wx:for="{{topics}}" wx:key="id" class="topic-item" bindtap="viewTopic" data-id="{{item.id}}">
+          <view class="topic-title">{{item.title}}</view>
+          <view class="topic-meta">
+            <text class="topic-category">{{item.category}}</text>
+            <text class="topic-time">{{item.created_at}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 我的工单 -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">我的工单</text>
+        <navigator url="/src/pages/workorder/list" class="section-more">更多 ></navigator>
+      </view>
+      <view class="workorder-list">
+        <view wx:if="{{workOrders.length === 0}}" class="empty-tip">暂无工单</view>
+        <view wx:for="{{workOrders}}" wx:key="id" class="workorder-item" bindtap="viewWorkOrder" data-id="{{item.id}}">
+          <view class="workorder-title">{{item.description}}</view>
+          <view class="workorder-meta">
+            <text class="workorder-type">{{item.type}}</text>
+            <text class="workorder-status {{item.status}}">{{item.status === 'pending' ? '待处理' : item.status === 'processing' ? '处理中' : item.status === 'completed' ? '已完成' : '超时'}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view> 

@@ -1,0 +1,68 @@
+{
+  "pages": [
+    "src/pages/index/index",
+    "src/pages/community/select",
+    "src/pages/topic/list",
+    "src/pages/topic/detail",
+    "src/pages/topic/create",
+    "src/pages/workorder/list",
+    "src/pages/workorder/detail",
+    "src/pages/workorder/create",
+    "src/pages/finance/list",
+    "src/pages/finance/detail",
+    "src/pages/notification/list",
+    "src/pages/notification/detail",
+    "src/pages/profile/index",
+    "src/pages/login/index"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#4CAF50",
+    "navigationBarTitleText": "智慧社区",
+    "navigationBarTextStyle": "white"
+  },
+  "tabBar": {
+    "color": "#999",
+    "selectedColor": "#4CAF50",
+    "backgroundColor": "#fff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "src/pages/index/index",
+        "text": "首页",
+        "iconPath": "src/assets/icons/home.png",
+        "selectedIconPath": "src/assets/icons/home_selected.png"
+      },
+      {
+        "pagePath": "src/pages/topic/list",
+        "text": "议事厅",
+        "iconPath": "src/assets/icons/topic.png",
+        "selectedIconPath": "src/assets/icons/topic_selected.png"
+      },
+      {
+        "pagePath": "src/pages/workorder/list",
+        "text": "工单",
+        "iconPath": "src/assets/icons/repair.png",
+        "selectedIconPath": "src/assets/icons/repair_selected.png"
+      },
+      {
+        "pagePath": "src/pages/profile/index",
+        "text": "我的",
+        "iconPath": "src/assets/icons/profile.png",
+        "selectedIconPath": "src/assets/icons/profile_selected.png"
+      }
+    ]
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "您的位置信息将用于自动匹配您所在的小区"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation"
+  ],
+  "usingComponents": {},
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+} 

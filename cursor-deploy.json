@@ -1,0 +1,74 @@
+{
+  "name": "smart-community",
+  "description": "智慧社区平台",
+  "version": "1.0.0",
+  "deployments": [
+    {
+      "name": "production",
+      "type": "server",
+      "host": "${SERVER_IP}",
+      "username": "${SSH_USER}",
+      "sshKey": "${SSH_PRIVATE_KEY}",
+      "sourcePath": "./",
+      "destinationPath": "/var/www/smart-community/",
+      "excludePatterns": [
+        "node_modules",
+        ".git",
+        ".env",
+        "*.log"
+      ],
+      "preDeployCommands": [
+        "npm install",
+        "npm run build"
+      ],
+      "postDeployCommands": [
+        "cd /var/www/smart-community",
+        "npm install --production",
+        "pm2 restart ecosystem.config.js"
+      ],
+      "environmentVariables": {
+        "NODE_ENV": "production"
+      }
+    },
+    {
+      "name": "staging",
+      "type": "server",
+      "host": "${STAGING_SERVER_IP}",
+      "username": "${SSH_USER}",
+      "sshKey": "${SSH_PRIVATE_KEY}",
+      "sourcePath": "./",
+      "destinationPath": "/var/www/smart-community-staging/",
+      "excludePatterns": [
+        "node_modules",
+        ".git",
+        ".env",
+        "*.log"
+      ],
+      "preDeployCommands": [
+        "npm install",
+        "npm run build"
+      ],
+      "postDeployCommands": [
+        "cd /var/www/smart-community-staging",
+        "npm install --production",
+        "pm2 restart ecosystem.config.js --env staging"
+      ],
+      "environmentVariables": {
+        "NODE_ENV": "staging"
+      }
+    }
+  ],
+  "secrets": [
+    "SERVER_IP",
+    "STAGING_SERVER_IP",
+    "SSH_USER",
+    "SSH_PRIVATE_KEY",
+    "DATABASE_URL",
+    "REDIS_URL",
+    "JWT_SECRET"
+  ],
+  "hooks": {
+    "pre-commit": "npm run lint",
+    "post-deploy": "curl -X POST ${WEBHOOK_URL} -H 'Content-Type: application/json' -d '{\"text\": \"🚀 智慧社区平台已成功部署！\"}'"
+  }
+} 

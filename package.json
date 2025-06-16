@@ -1,0 +1,64 @@
+{
+  "name": "smart-community",
+  "version": "1.0.0",
+  "description": "智慧社区平台 - 零成本社区管理解决方案",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "test": "jest --coverage",
+    "lint": "eslint .",
+    "build": "echo 'Backend build process' && npm run build:frontend-admin",
+    "build:frontend-admin": "cd frontend-admin && npm run build",
+    "migrate": "node ./backend/src/utils/db-migrate.js",
+    "seed": "node ./backend/src/utils/db-seed.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourname/smart-community.git"
+  },
+  "keywords": [
+    "社区管理",
+    "物业管理",
+    "社区服务",
+    "微信小程序",
+    "express",
+    "vue3"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.3.4",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.2",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1",
+    "dayjs": "^1.11.7",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.7.0",
+    "express-validator": "^6.15.0",
+    "helmet": "^6.0.1",
+    "jsonwebtoken": "^9.0.0",
+    "markdown-it": "^13.0.1",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.2.0",
+    "nodemailer": "^6.9.1",
+    "redis": "^4.6.5",
+    "sequelize": "^6.29.3",
+    "winston": "^3.8.2"
+  },
+  "devDependencies": {
+    "eslint": "^8.35.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.27.5",
+    "jest": "^29.5.0",
+    "nodemon": "^2.0.21",
+    "supertest": "^6.3.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+} 
