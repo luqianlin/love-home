@@ -1,0 +1,31 @@
+name: 智慧社区平台 CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [16.x]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: 使用 Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - name: 安装依赖
+      run: npm ci
+    - name: 运行代码检查
+      run: npm run lint
+    - name: 运行测试
+      run: npm run test
+    - name: 构建项目
+      run: npm run build 
