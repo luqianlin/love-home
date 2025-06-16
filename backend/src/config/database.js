@@ -1,50 +1,77 @@
 /**
  * 数据库配置文件
  */
-const mysql = require('mysql2/promise');
+const { Sequelize } = require('sequelize');
 const Redis = require('ioredis');
+const dotenv = require('dotenv');
 
-// MySQL连接池配置
-const mysqlPool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASS || '',
-  database: process.env.DB_NAME || 'smart_community',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  charset: 'utf8mb4'
-});
+// 加载环境变量
+dotenv.config();
 
-// Redis客户端配置
-const redisClient = new Redis({
-  host: process.env.REDIS_HOST || 'localhost',
+// MySQL 配置
+const sequelize = new Sequelize(
+  process.env.DB_NAME,
+  process.env.DB_USER,
+  process.env.DB_PASSWORD,
+  {
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 3306,
+    dialect: 'mysql',
+    timezone: '+08:00', // 东八区
+    dialectOptions: {
+      dateStrings: true,
+      typeCast: true
+    },
+    logging: process.env.NODE_ENV === 'development' ? console.log : false,
+    pool: {
+      max: 10,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  }
+);
+
+// Redis 客户端
+const redis = new Redis({
   port: process.env.REDIS_PORT || 6379,
-  password: process.env.REDIS_PASS || '',
-  db: process.env.REDIS_DB || 0
+  host: process.env.REDIS_HOST || 'localhost',
+  password: process.env.REDIS_PASSWORD || '',
+  db: process.env.REDIS_DB || 0,
+  retryStrategy: (times) => {
+    // 重试策略
+    const delay = Math.min(times * 50, 2000);
+    return delay;
+  }
 });
 
-// 数据库初始化测试
-const testDatabaseConnection = async () => {
+// Redis 连接事件
+redis.on('connect', () => {
+  console.log('Redis连接成功');
+});
+
+redis.on('error', (err) => {
+  console.error('Redis连接错误:', err);
+});
+
+// 数据库连接测试
+const testConnection = async () => {
   try {
-    // 测试MySQL连接
-    const connection = await mysqlPool.getConnection();
-    console.log('MySQL数据库连接成功');
-    connection.release();
-
-    // 测试Redis连接
-    await redisClient.ping();
-    console.log('Redis数据库连接成功');
-
-    return true;
+    await sequelize.authenticate();
+    console.log('数据库连接成功');
+    
+    // 只在开发环境自动同步表结构
+    if (process.env.NODE_ENV === 'development' && process.env.DB_SYNC === 'true') {
+      console.log('正在同步数据库表结构...');
+      await sequelize.sync({ alter: true });
+      console.log('数据库表结构同步完成');
+    }
   } catch (error) {
-    console.error('数据库连接失败:', error.message);
-    return false;
+    console.error('数据库连接失败:', error);
   }
 };
 
-module.exports = {
-  mysqlPool,
-  redisClient,
-  testDatabaseConnection
-}; 
+// 导出
+module.exports = sequelize;
+module.exports.redis = redis;
+module.exports.testConnection = testConnection; 

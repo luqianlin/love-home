@@ -1,65 +1,75 @@
 /**
- * 智慧社区平台 - 服务器入口文件
+ * 智慧社区平台服务器入口文件
  */
-require('dotenv').config();
 const express = require('express');
-const morgan = require('morgan');
-const helmet = require('helmet');
 const cors = require('cors');
+const helmet = require('helmet');
 const compression = require('compression');
-const rateLimit = require('express-rate-limit');
+const morgan = require('morgan');
 const path = require('path');
-const { errorMiddleware } = require('./backend/src/middleware/errorMiddleware');
+const dotenv = require('dotenv');
+
+// 加载环境变量
+dotenv.config();
+
+// 导入数据库配置
+const sequelize = require('./backend/src/config/database');
 
 // 创建Express应用
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // 中间件配置
-app.use(morgan('dev')); // 请求日志
 app.use(helmet()); // 安全HTTP头
-app.use(cors()); // 跨域资源共享
+app.use(cors()); // 跨域支持
 app.use(compression()); // 响应压缩
-app.use(express.json()); // JSON请求体解析
+app.use(express.json()); // JSON解析
 app.use(express.urlencoded({ extended: true })); // URL编码解析
 
-// 请求限流 - 防止DOS攻击
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15分钟
-  max: 100, // 每IP限制请求数
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use('/api/', apiLimiter);
+// 日志中间件
+const morganFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
+app.use(morgan(morganFormat));
 
 // 静态文件服务
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 路由配置
-const apiRoutes = require('./backend/src/routes');
-app.use('/api', apiRoutes);
+// API路由
+app.use('/api', require('./backend/src/routes'));
 
-// 全局错误处理中间件
-app.use(errorMiddleware);
+// 前端SPA支持
+app.get('/admin/*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend-admin/dist/index.html'));
+});
 
-// 未找到路由处理
-app.use((req, res) => {
-  res.status(404).json({ 
-    code: 404, 
-    message: '请求的资源不存在'
+// 错误处理
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    code: 500,
+    message: '服务器内部错误',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
 
+// 服务器端口
+const PORT = process.env.PORT || 3000;
+
 // 启动服务器
-app.listen(PORT, () => {
-  console.log(`服务器运行在端口 ${PORT}`);
-  console.log(`API文档: http://localhost:${PORT}/api-docs`);
-});
+const startServer = async () => {
+  try {
+    // 测试数据库连接
+    await sequelize.testConnection();
+    
+    // 启动HTTP服务器
+    app.listen(PORT, () => {
+      console.log(`服务器运行在端口 ${PORT}`);
+      console.log(`环境: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`API地址: http://localhost:${PORT}/api`);
+    });
+  } catch (error) {
+    console.error('服务器启动失败:', error);
+    process.exit(1);
+  }
+};
 
-// 优雅退出处理
-process.on('SIGTERM', () => {
-  console.log('SIGTERM 信号接收到，关闭服务器');
-  process.exit(0);
-});
-
-module.exports = app;
+// 启动服务
+startServer();

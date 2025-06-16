@@ -1,81 +1,59 @@
 /**
- * 全局错误处理中间件
- */
-const winston = require('winston');
-
-// 配置日志记录器
-const logger = winston.createLogger({
-  level: 'error',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  defaultMeta: { service: 'api-service' },
-  transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.Console({
-      format: winston.format.simple(),
-    }),
-  ],
-});
-
-/**
- * 自定义API错误类
- */
-class ApiError extends Error {
-  constructor(code, message, errors = []) {
-    super(message);
-    this.code = code;
-    this.errors = errors;
-  }
-}
-
-/**
  * 错误处理中间件
  */
-const errorMiddleware = (err, req, res, next) => {
-  // 默认错误代码和消息
-  let code = err.code || 500;
-  let message = err.message || '服务器内部错误';
-  let errors = err.errors || [];
+const ApiError = require('../utils/ApiError');
 
-  // 记录错误日志
-  logger.error({
-    message: err.message,
-    stack: err.stack,
-    path: req.path,
-    method: req.method,
-    body: req.body,
-    user: req.user ? req.user.id : 'anonymous',
-    ip: req.ip
-  });
+// 开发环境标志
+const isDev = process.env.NODE_ENV === 'development';
 
-  // 处理常见错误类型
-  if (err.name === 'ValidationError') {
-    code = 4001; // 表单验证失败
-    message = '表单验证失败';
-    errors = Object.keys(err.errors).map(field => ({
-      field,
-      message: err.errors[field].message
-    }));
-  } else if (err.name === 'UnauthorizedError') {
-    code = 4003; // 权限不足
-    message = '权限不足或登录已过期';
-  } else if (err.code === 'LIMIT_FILE_SIZE') {
-    code = 5002; // 文件上传错误
-    message = '文件大小超出限制';
-  }
-
-  // 返回标准化错误响应
-  res.status(code < 1000 ? code : 500).json({
-    code,
-    message,
-    errors: errors.length > 0 ? errors : undefined
-  });
+/**
+ * 捕获404错误
+ */
+const notFoundHandler = (req, res, next) => {
+  const error = new ApiError(`未找到 - ${req.originalUrl}`, 404);
+  next(error);
 };
 
-// 导出
+/**
+ * 统一错误处理中间件
+ */
+const errorHandler = (err, req, res, next) => {
+  // 状态码，默认500
+  const statusCode = err.statusCode || 500;
+  
+  // 错误消息
+  const message = err.message || '服务器内部错误';
+  
+  // 错误响应
+  const response = {
+    code: statusCode,
+    message,
+    errors: err.errors || null,
+    stack: isDev ? err.stack : undefined  // 只在开发环境返回错误堆栈
+  };
+  
+  // 记录错误日志
+  console.error(`[${new Date().toISOString()}] ${req.method} ${req.url}: ${err.message}`);
+  if (isDev && err.stack) {
+    console.error(err.stack);
+  }
+  
+  // 发送响应
+  res.status(statusCode).json(response);
+};
+
+/**
+ * 异常捕获装饰器
+ * 用于包装async控制器方法，自动捕获异常并传递给errorHandler
+ */
+const catchAsync = (fn) => {
+  return (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+};
+
 module.exports = {
-  errorMiddleware,
-  ApiError
-}; 
+  notFoundHandler,
+  errorHandler,
+  catchAsync
+};
