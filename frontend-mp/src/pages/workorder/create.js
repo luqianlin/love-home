@@ -298,7 +298,7 @@ Page({
     const uploadPromises = images.map(image => {
       return new Promise((resolve, reject) => {
         wx.uploadFile({
-          url: `${api.baseUrl}/api/upload`,
+          url: `${app.globalData.baseUrl}/upload`,
           filePath: image.tempFilePath,
           name: 'file',
           header: api.getHeaders(),

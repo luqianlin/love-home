@@ -403,7 +403,7 @@ Page({
     const uploadPromises = attachments.map(attachment => {
       return new Promise((resolve, reject) => {
         wx.uploadFile({
-          url: `${api.baseUrl}/api/upload`,
+          url: `${app.globalData.baseUrl}/upload`,
           filePath: attachment.tempFilePath,
           name: 'file',
           header: api.getHeaders(),
