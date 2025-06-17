@@ -15,6 +15,9 @@ dotenv.config();
 // 导入数据库配置
 const sequelize = require('./backend/src/config/database');
 
+// 导入定时任务服务
+const { initScheduledTasks } = require('./backend/src/services/scheduledTasks');
+
 // 创建Express应用
 const app = express();
 
@@ -64,6 +67,11 @@ const startServer = async () => {
       console.log(`服务器运行在端口 ${PORT}`);
       console.log(`环境: ${process.env.NODE_ENV || 'development'}`);
       console.log(`API地址: http://localhost:${PORT}/api`);
+      
+      // 初始化定时任务
+      if (process.env.ENABLE_SCHEDULED_TASKS !== 'false') {
+        initScheduledTasks();
+      }
     });
   } catch (error) {
     console.error('服务器启动失败:', error);

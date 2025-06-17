@@ -1,210 +1,244 @@
 /**
  * 通知辅助工具
- * 用于发送各类通知
+ * 支持多种通知方式：Server酱、邮件、Web推送
  */
-const { Notification, User, UserCommunity } = require('../models');
-const { redis } = require('../config/database');
+const axios = require('axios');
 const nodemailer = require('nodemailer');
+const { redis } = require('../config/database');
+const crypto = require('crypto');
+const AES = require('crypto-js/aes');
+const Utf8 = require('crypto-js/enc-utf8');
+
+// 加密密钥
+const SECRET_KEY = process.env.ENCRYPTION_KEY || 'community-platform-secret-key';
 
 /**
  * 发送通知
  * @param {Object} options 通知选项
- * @param {String} options.title 通知标题
- * @param {String} options.content 通知内容
- * @param {String} options.level 通知级别 (urgent/normal)
- * @param {String} options.target_scope 目标范围 (楼栋单元数组)
- * @param {Date} options.expire_time 过期时间
- * @param {Number} options.target_user_id 目标用户ID
- * @param {String} options.target_role 目标角色
- * @param {Number} options.community_id 社区ID
- * @param {Number} options.related_id 关联ID
- * @param {String} options.related_type 关联类型
- * @returns {Promise<Object>} 创建的通知对象
+ * @param {string} options.title 通知标题
+ * @param {string} options.content 通知内容
+ * @param {string} options.level 通知级别 (urgent/normal)
+ * @param {Array} options.recipients 接收者列表
+ * @param {number} options.community_id 社区ID
+ * @param {number} options.related_id 相关ID
+ * @param {string} options.related_type 相关类型
  */
 const sendNotification = async (options) => {
-  const {
-    title,
-    content,
-    level = 'normal',
-    target_scope,
-    expire_time,
-    target_user_id,
-    target_role,
-    community_id,
-    related_id,
-    related_type,
-    publisher_id = 1 // 默认系统发布
-  } = options;
+  const { title, content, level, recipients, community_id, related_id, related_type } = options;
   
-  // 创建通知记录
-  const notification = await Notification.create({
-    title,
-    content,
-    level,
-    target_scope,
-    expire_time: level === 'urgent' ? expire_time || new Date(Date.now() + 24 * 60 * 60 * 1000) : null,
-    status: 'published',
-    pushed: false,
-    publisher_id,
-    community_id
-  });
-  
-  // 获取目标用户
-  let targetUsers = [];
-  
-  if (target_user_id) {
-    // 指定用户
-    const user = await User.findByPk(target_user_id);
-    if (user) {
-      targetUsers = [user];
-    }
-  } else if (target_role) {
-    // 指定角色
-    targetUsers = await User.findAll({
-      where: { role: target_role },
-      include: [
-        {
-          model: UserCommunity,
-          where: { community_id }
-        }
-      ]
-    });
-  } else {
-    // 根据target_scope过滤用户
-    const query = {
-      include: [
-        {
-          model: UserCommunity,
-          where: { community_id }
-        }
-      ]
-    };
+  // 紧急通知使用Server酱和邮件
+  if (level === 'urgent') {
+    // 使用Server酱发送微信通知
+    await sendServerChan(title, content);
     
-    if (target_scope && target_scope.length > 0) {
-      query.include[0].where.building = target_scope;
+    // 使用邮件发送通知
+    if (recipients && recipients.length > 0) {
+      for (const recipient of recipients) {
+        if (recipient.email) {
+          await sendEmail(recipient.email, title, content);
+        }
+      }
     }
-    
-    targetUsers = await User.findAll(query);
   }
   
-  // 发送通知
-  for (const user of targetUsers) {
-    // 存储到Redis队列
+  // 所有通知都存入Redis以便Web推送
+  storeWebNotification(options);
+  
+  return true;
+};
+
+/**
+ * 使用Server酱发送微信通知
+ * @param {string} title 通知标题
+ * @param {string} content 通知内容
+ */
+const sendServerChan = async (title, content) => {
+  try {
+    const serverChanKey = process.env.SERVER_CHAN_KEY;
+    if (!serverChanKey) {
+      console.warn('未配置Server酱密钥，跳过微信通知');
+      return false;
+    }
+    
+    // 调用Server酱API
+    const response = await axios.post(`https://sctapi.ftqq.com/${serverChanKey}.send`, {
+      title,
+      desp: content
+    });
+    
+    if (response.data && response.data.code === 0) {
+      console.log('Server酱通知发送成功');
+      return true;
+    } else {
+      console.error('Server酱通知发送失败:', response.data);
+      return false;
+    }
+  } catch (error) {
+    console.error('Server酱通知发送异常:', error);
+    return false;
+  }
+};
+
+/**
+ * 使用NodeMailer发送邮件通知
+ * @param {string} to 接收邮箱
+ * @param {string} subject 邮件主题
+ * @param {string} html 邮件内容
+ */
+const sendEmail = async (to, subject, html) => {
+  try {
+    // 解密邮箱
+    const decryptedEmail = decryptData(to);
+    
+    // 创建邮件传输对象
+    const transporter = nodemailer.createTransport({
+      host: process.env.MAIL_HOST || 'smtp.qq.com',
+      port: process.env.MAIL_PORT || 465,
+      secure: true,
+      auth: {
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS
+      }
+    });
+    
+    // 发送邮件
+    const info = await transporter.sendMail({
+      from: `"智慧社区平台" <${process.env.MAIL_USER}>`,
+      to: decryptedEmail,
+      subject,
+      html
+    });
+    
+    console.log('邮件发送成功:', info.messageId);
+    return true;
+  } catch (error) {
+    console.error('邮件发送失败:', error);
+    return false;
+  }
+};
+
+/**
+ * 存储Web推送通知到Redis
+ * @param {Object} notification 通知对象
+ */
+const storeWebNotification = async (notification) => {
+  try {
+    const { title, content, level, recipients, community_id, related_id, related_type } = notification;
+    
+    // 通知ID
+    const notificationId = `notification:${Date.now()}:${crypto.randomBytes(4).toString('hex')}`;
+    
+    // 通知数据
     const notificationData = {
-      id: notification.id,
+      id: notificationId,
       title,
       content,
       level,
-      user_id: user.id,
       community_id,
       related_id,
       related_type,
       created_at: new Date().toISOString()
     };
     
-    // 添加到用户的通知列表
-    await redis.lpush(`user:${user.id}:notifications`, JSON.stringify(notificationData));
+    // 存储通知数据
+    await redis.set(notificationId, JSON.stringify(notificationData), 'EX', 60 * 60 * 24 * 7); // 7天过期
     
-    // 设置通知过期时间
-    if (level === 'urgent' && expire_time) {
-      const expireTime = new Date(expire_time).getTime();
-      const now = Date.now();
-      const ttl = Math.floor((expireTime - now) / 1000);
-      
-      if (ttl > 0) {
-        await redis.expire(`user:${user.id}:notifications`, ttl);
+    // 如果有指定接收者，则为每个接收者添加通知
+    if (recipients && recipients.length > 0) {
+      for (const recipient of recipients) {
+        await redis.sadd(`user:${recipient.id}:notifications`, notificationId);
       }
+    } else if (community_id) {
+      // 否则添加到社区通知列表
+      await redis.sadd(`community:${community_id}:notifications`, notificationId);
     }
     
-    // 紧急通知发送邮件
-    if (level === 'urgent' && user.email) {
-      try {
-        await sendUrgentEmail(user.email, title, content);
-      } catch (error) {
-        console.error('发送紧急邮件失败:', error);
-      }
-    }
+    return true;
+  } catch (error) {
+    console.error('存储Web通知失败:', error);
+    return false;
   }
-  
-  // 更新通知状态
-  await notification.update({ pushed: true });
-  
-  return notification;
 };
 
 /**
- * 发送紧急邮件
- * @param {String} email 收件人邮箱
- * @param {String} title 邮件标题
- * @param {String} content 邮件内容
- * @returns {Promise} 发送结果
+ * 获取用户的Web推送通知
+ * @param {number} userId 用户ID
+ * @param {number} communityId 社区ID
+ * @param {number} limit 限制数量
  */
-const sendUrgentEmail = async (email, title, content) => {
-  // 创建邮件传输对象
-  const transporter = nodemailer.createTransport({
-    host: process.env.MAIL_HOST,
-    port: process.env.MAIL_PORT,
-    secure: process.env.MAIL_PORT === '465',
-    auth: {
-      user: process.env.MAIL_USER,
-      pass: process.env.MAIL_PASS
+const getUserWebNotifications = async (userId, communityId, limit = 10) => {
+  try {
+    // 获取用户通知ID列表
+    const userNotificationIds = await redis.smembers(`user:${userId}:notifications`);
+    
+    // 获取社区通知ID列表
+    const communityNotificationIds = await redis.smembers(`community:${communityId}:notifications`);
+    
+    // 合并通知ID
+    const notificationIds = [...new Set([...userNotificationIds, ...communityNotificationIds])];
+    
+    // 获取通知详情
+    const notifications = [];
+    for (const id of notificationIds.slice(0, limit)) {
+      const data = await redis.get(id);
+      if (data) {
+        notifications.push(JSON.parse(data));
+      }
     }
-  });
-  
-  // 发送邮件
-  return transporter.sendMail({
-    from: `"智慧社区" <${process.env.MAIL_FROM}>`,
-    to: email,
-    subject: `【紧急通知】${title}`,
-    text: content,
-    html: `
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 5px; background-color: #f9f9f9;">
-        <h2 style="color: #e74c3c;">紧急通知</h2>
-        <h3>${title}</h3>
-        <div style="margin: 20px 0; padding: 15px; background-color: #fff; border-left: 4px solid #e74c3c;">
-          ${content}
-        </div>
-        <p style="color: #7f8c8d; font-size: 12px;">此为系统自动发送，请勿回复</p>
-      </div>
-    `
-  });
-};
-
-/**
- * 获取用户未读通知
- * @param {Number} userId 用户ID
- * @param {Number} limit 限制数量
- * @returns {Promise<Array>} 未读通知列表
- */
-const getUserUnreadNotifications = async (userId, limit = 10) => {
-  const notifications = await redis.lrange(`user:${userId}:notifications`, 0, limit - 1);
-  return notifications.map(item => JSON.parse(item));
+    
+    // 按时间排序
+    return notifications.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  } catch (error) {
+    console.error('获取Web通知失败:', error);
+    return [];
+  }
 };
 
 /**
  * 标记通知为已读
- * @param {Number} userId 用户ID
- * @param {Number} notificationId 通知ID
- * @returns {Promise<Boolean>} 是否成功
+ * @param {number} userId 用户ID
+ * @param {string} notificationId 通知ID
  */
 const markNotificationAsRead = async (userId, notificationId) => {
-  const notifications = await redis.lrange(`user:${userId}:notifications`, 0, -1);
-  
-  for (let i = 0; i < notifications.length; i++) {
-    const notification = JSON.parse(notifications[i]);
-    
-    if (notification.id === parseInt(notificationId, 10)) {
-      // 移除该通知
-      await redis.lrem(`user:${userId}:notifications`, 1, notifications[i]);
-      return true;
-    }
+  try {
+    await redis.srem(`user:${userId}:notifications`, notificationId);
+    return true;
+  } catch (error) {
+    console.error('标记通知已读失败:', error);
+    return false;
   }
-  
-  return false;
+};
+
+/**
+ * 加密数据
+ * @param {string} data 原始数据
+ * @returns {string} 加密后的数据
+ */
+const encryptData = (data) => {
+  if (!data) return null;
+  return AES.encrypt(data, SECRET_KEY).toString();
+};
+
+/**
+ * 解密数据
+ * @param {string} encryptedData 加密数据
+ * @returns {string} 解密后的数据
+ */
+const decryptData = (encryptedData) => {
+  if (!encryptedData) return null;
+  try {
+    const bytes = AES.decrypt(encryptedData, SECRET_KEY);
+    return bytes.toString(Utf8);
+  } catch (error) {
+    console.error('解密失败:', error);
+    return null;
+  }
 };
 
 module.exports = {
   sendNotification,
-  getUserUnreadNotifications,
-  markNotificationAsRead
+  getUserWebNotifications,
+  markNotificationAsRead,
+  encryptData,
+  decryptData
 }; 

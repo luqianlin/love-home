@@ -1,7 +1,8 @@
 {
   "description": "零成本智慧社区平台小程序",
   "packOptions": {
-    "ignore": []
+    "ignore": [],
+    "include": []
   },
   "setting": {
     "urlCheck": true,
@@ -47,20 +48,17 @@
       "typescript"
     ],
     "ignoreUploadUnusedFiles": true,
-    "useStaticServer": true
+    "useStaticServer": true,
+    "compileWorklet": false,
+    "localPlugins": false,
+    "condition": false,
+    "swc": false,
+    "disableSWC": true
   },
   "compileType": "miniprogram",
   "libVersion": "2.24.3",
-  "appid": "wx123456789abc",
+  "appid": "wxc03742921d43f153",
   "projectname": "智慧社区",
-  "debugOptions": {
-    "hidedInDevtools": []
-  },
-  "scripts": {},
-  "staticServerOptions": {
-    "baseURL": "",
-    "servePath": ""
-  },
   "isGameTourist": false,
   "condition": {
     "search": {
@@ -81,5 +79,7 @@
     "miniprogram": {
       "list": []
     }
-  }
-} 
+  },
+  "simulatorPluginLibVersion": {},
+  "editorSetting": {}
+}
