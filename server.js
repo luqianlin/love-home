@@ -65,7 +65,7 @@ app.use((err, req, res, next) => {
 });
 
 // 服务器端口
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 // 启动服务器
 const startServer = async () => {
