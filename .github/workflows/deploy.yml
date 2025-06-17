@@ -1,87 +1,47 @@
-name: 智慧社区平台自动部署
+name: 智慧社区平台部署
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
-  test:
-    name: 测试
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: 设置Node.js环境
-      uses: actions/setup-node@v3
-      with:
-        node-version: '16'
-        cache: 'npm'
-    
-    - name: 安装依赖
-      run: npm ci
-    
-    - name: 运行测试
-      run: npm test || echo "暂无测试，跳过"
-  
   deploy:
-    name: 部署到生产环境
-    needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: 设置Node.js环境
-      uses: actions/setup-node@v3
-      with:
-        node-version: '16'
-        cache: 'npm'
-    
-    - name: 安装依赖
-      run: npm ci
-    
-    - name: 构建前端
-      run: |
-        cd frontend-admin
-        npm ci
-        npm run build
-    
-    - name: 部署到服务器
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USERNAME }}
-        password: ${{ secrets.SERVER_PASSWORD }}
-        port: ${{ secrets.SERVER_PORT }}
-        script: |
-          cd /var/www/love-home
-          git pull
-          npm ci
-          cd frontend-admin
-          npm ci
-          npm run build
-          cd ..
-          pm2 reload ecosystem.config.js
-    
-    - name: 发送部署通知
-      uses: joelwmale/webhook-action@master
-      with:
-        url: ${{ secrets.DEPLOY_WEBHOOK_URL }}
-        body: '{"text": "智慧社区平台已成功部署到生产环境！\n版本: ${{ github.sha }}\n提交者: ${{ github.actor }}\n提交信息: ${{ github.event.head_commit.message }}"}'
-
-  notify_failure:
-    name: 部署失败通知
-    needs: [test, deploy]
-    if: failure()
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: 发送失败通知
-      uses: joelwmale/webhook-action@master
-      with:
-        url: ${{ secrets.DEPLOY_WEBHOOK_URL }}
-        body: '{"text": "⚠️ 智慧社区平台部署失败！\n版本: ${{ github.sha }}\n提交者: ${{ github.actor }}\n提交信息: ${{ github.event.head_commit.message }}\n请检查GitHub Actions日志！"}' 
+      - uses: actions/checkout@v3
+      
+      - name: 使用 Node.js 16.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'npm'
+          
+      - name: 安装依赖
+        run: npm ci
+        
+      - name: 构建项目
+        run: npm run build
+        
+      - name: 设置 SSH 密钥
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          
+      - name: 添加远程服务器到已知主机
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+          
+      - name: 部署到生产服务器
+        run: |
+          rsync -avz --delete \
+            --exclude 'node_modules' \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '.env' \
+            ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/var/www/love-home/
+            
+      - name: 远程重启服务
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} 'cd /var/www/love-home && npm install && pm2 reload ecosystem.config.js' 
