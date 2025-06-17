@@ -81,5 +81,14 @@
     }
   },
   "simulatorPluginLibVersion": {},
-  "editorSetting": {}
+  "editorSetting": {},
+  "requestDomains": [
+    "lovehome.xin"
+  ],
+  "uploadDomains": [
+    "lovehome.xin"
+  ],
+  "downloadDomains": [
+    "lovehome.xin"
+  ]
 }

@@ -22,8 +22,15 @@ const { initScheduledTasks } = require('./backend/src/services/scheduledTasks');
 const app = express();
 
 // 中间件配置
-app.use(helmet()); // 安全HTTP头
-app.use(cors()); // 跨域支持
+app.use(helmet({
+  contentSecurityPolicy: false, // 禁用CSP以避免微信小程序请求问题
+  crossOriginEmbedderPolicy: false, // 禁用COEP以解决跨域问题
+})); // 安全HTTP头
+app.use(cors({
+  origin: '*', // 允许所有来源访问
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+})); // 跨域支持
 app.use(compression()); // 响应压缩
 app.use(express.json()); // JSON解析
 app.use(express.urlencoded({ extended: true })); // URL编码解析
@@ -32,8 +39,75 @@ app.use(express.urlencoded({ extended: true })); // URL编码解析
 const morganFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
 app.use(morgan(morganFormat));
 
+// CORS预检请求处理 - 处理OPTIONS请求
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Max-Age', '86400'); // 24小时
+  res.sendStatus(204);
+});
+
+// 微信小程序专用健康检查端点 - 优先匹配
+app.get('/health', (req, res) => {
+  // 判断是否来自微信小程序的请求
+  const userAgent = req.headers['user-agent'] || '';
+  const isMiniProgram = userAgent.includes('MicroMessenger') || 
+                        userAgent.includes('miniProgram') || 
+                        req.headers['referer']?.includes('servicewechat.com');
+  
+  // 设置特殊头信息
+  if (isMiniProgram) {
+    console.log('接收到微信小程序健康检查请求');
+    // 设置微信小程序特殊需求的头信息
+    res.header('Connection', 'keep-alive');
+    res.header('Keep-Alive', 'timeout=60');
+  }
+  
+  // 设置不缓存的头信息
+  res.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.header('Pragma', 'no-cache');
+  res.header('Expires', '0');
+  res.header('Surrogate-Control', 'no-store');
+  
+  // CORS头信息
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Max-Age', '86400');
+  
+  // 设置content-length以避免传输问题
+  const responseData = { 
+    status: 'ok', 
+    message: '服务正常运行',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    clientInfo: isMiniProgram ? 'wechat_mini_program' : 'web_client'
+  };
+  
+  const jsonResponse = JSON.stringify(responseData);
+  res.header('Content-Type', 'application/json; charset=utf-8');
+  res.header('Content-Length', Buffer.byteLength(jsonResponse));
+  
+  // 返回健康状态
+  res.status(200).send(jsonResponse);
+});
+
 // 健康检查端点 - 直接在根级别添加，确保优先匹配
 app.get('/api/health', (req, res) => {
+  // 设置不缓存的头信息
+  res.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.header('Pragma', 'no-cache');
+  res.header('Expires', '0');
+  res.header('Surrogate-Control', 'no-store');
+  
+  // 允许跨域请求
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  // 返回健康状态
   res.status(200).json({ 
     status: 'ok', 
     message: '服务正常运行',

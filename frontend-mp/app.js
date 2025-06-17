@@ -11,18 +11,21 @@ App({
     currentCommunity: null,
     // 配置API地址（只使用合法域名，符合微信小程序规范）
     apiUrls: [
-      'https://lovehome.xin/api'  // 使用正式域名
+      'https://lovehome.xin/api',  // 使用正式域名
+      'https://lovehome.xin'       // 备用地址，不带/api前缀
     ],
     // 当前使用的API地址索引
     currentApiUrlIndex: 0,
     // 实际使用的地址
-    baseUrl: 'https://lovehome.xin/api',
+    baseUrl: 'https://lovehome.xin',
     // 网络状态
     networkAvailable: true,
     networkType: 'unknown',
     needRefreshAfterNetworkRestore: false,
     // 服务器连接状态
     serverConnected: false,
+    // 成功连接的健康检查端点
+    healthEndpoint: '/api/health',
     // 系统信息
     systemInfo: null
   },

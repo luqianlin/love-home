@@ -24,31 +24,115 @@ const checkServerStatus = (successCallback, failCallback) => {
       return;
     }
     
-    console.log(`尝试连接健康检查端点: ${app.globalData.baseUrl}/health`);
+    // 定义多个健康检查端点进行尝试
+    const healthEndpoints = [
+      '/health',
+      '/api/health'
+    ];
     
-    // 使用健康检查端点
-    wx.request({
-      url: `${app.globalData.baseUrl}/health`,
-      method: 'GET',
-      timeout: 10000, // 恢复较长的超时时间，避免网络波动影响
-      enableHttp2: true,
-      enableCache: false,
-      success: (res) => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          console.log('健康检查成功:', res.data);
-          typeof successCallback === 'function' && successCallback(res);
-        } else {
-          console.error('健康检查返回非成功状态码:', res.statusCode);
-          typeof failCallback === 'function' && failCallback({
-            errMsg: `健康检查失败: 状态码 ${res.statusCode}`
+    let currentEndpointIndex = 0;
+    const maxRetries = 3; // 每个端点最大重试次数
+    let retryCount = 0;
+    
+    const tryNextEndpoint = () => {
+      if (currentEndpointIndex >= healthEndpoints.length) {
+        // 所有端点都尝试失败
+        console.error('所有健康检查端点连接失败');
+        typeof failCallback === 'function' && failCallback({
+          errMsg: '服务器连接失败，请稍后再试'
+        });
+        return;
+      }
+      
+      const endpoint = healthEndpoints[currentEndpointIndex];
+      const fullUrl = `${app.globalData.baseUrl}${endpoint}`;
+      console.log(`尝试连接健康检查端点 (${retryCount+1}/${maxRetries}): ${fullUrl}`);
+      
+      // 使用健康检查端点
+      wx.request({
+        url: fullUrl,
+        method: 'GET',
+        timeout: 15000, // 增加超时时间，避免网络波动影响
+        enableHttp2: true,
+        enableCache: false,
+        sslVerify: false, // 禁用SSL验证，解决自签名证书问题
+        enableChunked: false, // 禁用分块传输，解决某些服务器兼容性问题
+        enableQuic: false, // 禁用QUIC，使用标准HTTPS
+        forceCellularNetwork: false, // 避免强制使用蜂窝网络
+        disableCache: true, // 禁用缓存
+        enableHttpDNS: false, // 禁用HTTP DNS
+        header: {
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive'
+        },
+        success: (res) => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            console.log('健康检查成功:', res.data);
+            // 记录成功的端点以便将来使用
+            app.globalData.healthEndpoint = endpoint;
+            typeof successCallback === 'function' && successCallback(res);
+          } else {
+            console.error('健康检查返回非成功状态码:', res.statusCode, res.data);
+            retryOrNext();
+          }
+        },
+        fail: (err) => {
+          // 提供更详细的错误诊断信息
+          console.error(`健康检查请求失败 (${endpoint}):`, {
+            errMsg: err.errMsg,
+            errCode: err.errCode || 'N/A',
+            endpoint: endpoint,
+            fullUrl: fullUrl,
+            retryCount: retryCount
+          });
+          
+          // 对特定错误类型提供更详细的日志
+          if (err.errMsg && err.errMsg.includes('CONNECTION_CLOSED')) {
+            console.warn('检测到连接意外关闭，可能是服务器中断请求或网络问题');
+            
+            // CONNECTION_CLOSED 专用策略
+            if (retryCount === 0) {
+              // 第一次遇到此错误，直接切换端点而不是重试同一端点
+              console.log("首次CONNECTION_CLOSED错误，直接切换到下一个端点");
+              retryCount = maxRetries; // 强制切换到下一个端点
+              retryOrNext();
+            } else {
+              // 增加延迟时间，给服务器更多恢复时间
+              setTimeout(() => {
+                retryOrNext();
+              }, 3000); // 延长重试间隔到3秒
+            }
+          } else {
+            retryOrNext();
+          }
+        },
+        complete: (res) => {
+          // 添加完成后的详细信息记录
+          console.log(`健康检查请求完成 (${endpoint}):`, {
+            statusCode: res.statusCode || 'N/A',
+            duration: Date.now() - new Date().getTime()
           });
         }
-      },
-      fail: (err) => {
-        console.error('健康检查请求失败:', err);
-        typeof failCallback === 'function' && failCallback(err);
+      });
+    };
+    
+    const retryOrNext = () => {
+      retryCount++;
+      if (retryCount < maxRetries) {
+        // 重试当前端点
+        console.log(`将在1秒后重试端点 ${healthEndpoints[currentEndpointIndex]}`);
+        setTimeout(tryNextEndpoint, 1000);
+      } else {
+        // 尝试下一个端点
+        retryCount = 0;
+        currentEndpointIndex++;
+        console.log(`切换到下一个健康检查端点: ${currentEndpointIndex < healthEndpoints.length ? healthEndpoints[currentEndpointIndex] : '无更多端点'}`);
+        setTimeout(tryNextEndpoint, 1000);
       }
-    });
+    };
+    
+    // 开始尝试连接
+    tryNextEndpoint();
   }, 1000); // 增加延迟，确保应用初始化完成
 };
 
