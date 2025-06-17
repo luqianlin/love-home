@@ -1,5 +1,5 @@
 {
-  "name": "smart-community",
+  "name": "love-home",
   "version": "1.0.0",
   "description": "智慧社区平台 - 零成本社区管理解决方案",
   "main": "server.js",
@@ -18,7 +18,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/luqianlin/love-home.git"
+    "url": "git+ssh://git@github.com/luqianlin/love-home.git"
   },
   "keywords": [
     "社区管理",

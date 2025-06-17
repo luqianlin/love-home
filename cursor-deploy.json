@@ -1,5 +1,5 @@
 {
-  "name": "smart-community",
+  "name": "love-home",
   "description": "智慧社区平台",
   "version": "1.0.0",
   "deployments": [
@@ -10,7 +10,7 @@
       "username": "${SSH_USER}",
       "sshKey": "${SSH_PRIVATE_KEY}",
       "sourcePath": "./",
-      "destinationPath": "/var/www/smart-community/",
+      "destinationPath": "/var/www/love-home/",
       "excludePatterns": [
         "node_modules",
         ".git",
@@ -22,7 +22,7 @@
         "npm run build"
       ],
       "postDeployCommands": [
-        "cd /var/www/smart-community",
+        "cd /var/www/love-home",
         "npm install --production",
         "pm2 restart ecosystem.config.js"
       ],
@@ -37,7 +37,7 @@
       "username": "${SSH_USER}",
       "sshKey": "${SSH_PRIVATE_KEY}",
       "sourcePath": "./",
-      "destinationPath": "/var/www/smart-community-staging/",
+      "destinationPath": "/var/www/love-home-staging/",
       "excludePatterns": [
         "node_modules",
         ".git",
@@ -49,7 +49,7 @@
         "npm run build"
       ],
       "postDeployCommands": [
-        "cd /var/www/smart-community-staging",
+        "cd /var/www/love-home-staging",
         "npm install --production",
         "pm2 restart ecosystem.config.js --env staging"
       ],
