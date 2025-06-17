@@ -195,6 +195,38 @@ const routes = [
     children: systemRoutes
   },
   {
+    path: '/communities',
+    component: Layout,
+    redirect: '/communities/list',
+    meta: { title: '社区管理', requiresAuth: true },
+    children: [
+      {
+        path: 'list',
+        name: 'CommunityList',
+        component: () => import('../views/community/CommunityList.vue'),
+        meta: { title: '社区列表', requiresAuth: true }
+      },
+      {
+        path: 'create',
+        name: 'CommunityCreate',
+        component: () => import('../views/community/CommunityForm.vue'),
+        meta: { title: '创建社区', requiresAuth: true }
+      },
+      {
+        path: 'edit/:id',
+        name: 'CommunityEdit',
+        component: () => import('../views/community/CommunityForm.vue'),
+        meta: { title: '编辑社区', requiresAuth: true }
+      },
+      {
+        path: 'switcher',
+        name: 'CommunitySwitcher',
+        component: () => import('../views/community/CommunitySwitcher.vue'),
+        meta: { title: '切换小区', requiresAuth: true }
+      }
+    ]
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('../views/error/404.vue'),

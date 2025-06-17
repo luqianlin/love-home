@@ -9,21 +9,158 @@ App({
     userInfo: null,
     token: '',
     currentCommunity: null,
-    baseUrl: 'http://localhost:3000/api',
-    // 线上环境请使用HTTPS地址
-    // baseUrl: 'https://api.community.yourdomain.com/api',
+    // 配置API地址
+    apiUrls: [
+      'https://lovehome.xin/api'  // 主域名
+    ],
+    // 当前使用的API地址索引
+    currentApiUrlIndex: 0,
+    // 实际使用的地址
+    baseUrl: 'https://lovehome.xin/api',
+    // 网络状态
+    networkAvailable: true,
+    networkType: 'unknown',
+    needRefreshAfterNetworkRestore: false,
+    // 服务器连接状态
+    serverConnected: false,
+    // 系统信息
+    systemInfo: null
   },
 
   /**
    * 当小程序初始化完成时触发
    */
   onLaunch() {
-    // 获取系统信息
-    const systemInfo = wx.getSystemInfoSync();
-    this.globalData.systemInfo = systemInfo;
+    // 初始化全局变量
+    this.connectionRetryTimer = null;
+    // 获取系统信息（使用新API替代废弃的getSystemInfoSync）
+    try {
+      // 获取基础信息
+      const appBaseInfo = wx.getAppBaseInfo ? wx.getAppBaseInfo() : {};
+      // 获取设备信息
+      const deviceInfo = wx.getDeviceInfo ? wx.getDeviceInfo() : {};
+      // 获取窗口信息
+      const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : {};
+      
+      // 合并系统信息
+      this.globalData.systemInfo = {
+        ...appBaseInfo,
+        ...deviceInfo,
+        ...windowInfo
+      };
+    } catch (error) {
+      console.error('获取系统信息失败:', error);
+    }
     
-    // 检查登录状态
+    // 监听网络状态变化（先设置网络监听）
+    this.listenNetworkStatus();
+    
+    // 先检查登录状态
     this.checkLoginStatus();
+    
+    // 使用setTimeout延迟检查服务器连接，确保App实例已完全初始化
+    setTimeout(() => {
+      this.checkServerConnection();
+      
+      // 如果第一次连接失败，设置定时任务尝试重新连接
+      if (!this.globalData.serverConnected) {
+        this.connectionRetryTimer = setInterval(() => {
+          // 如果已连接成功，清除定时器
+          if (this.globalData.serverConnected) {
+            clearInterval(this.connectionRetryTimer);
+            return;
+          }
+          console.log('尝试重新连接服务器...');
+          this.checkServerConnection();
+        }, 15000); // 每15秒尝试重连一次
+      }
+    }, 500); // 增加延迟时间，确保应用完全初始化
+  },
+  
+  /**
+   * 检查服务器连接状态
+   */
+  checkServerConnection() {
+    // 导入请求工具
+    const util = require('./src/utils/request.js');
+    
+    // 检查服务器状态
+    util.checkServerStatus(
+      (res) => {
+        console.log('服务器连接正常', res);
+        this.globalData.serverConnected = true;
+      },
+      (err) => {
+        console.error('服务器连接异常:', err);
+        this.globalData.serverConnected = false;
+        
+        // 尝试切换API地址
+        this.switchApiUrl();
+        
+        // 如果不是因为应用未初始化的错误，且所有API地址都尝试失败，才显示提示
+        if ((!err.errMsg || !err.errMsg.includes('应用实例未初始化')) && 
+            this.globalData.currentApiUrlIndex === 0) {
+          // 显示错误提示（只在第一次失败或所有地址都失败时显示）
+        wx.showModal({
+          title: '连接提示',
+            content: '连接到服务器失败，请检查网络或稍后再试。',
+          showCancel: false
+        });
+      }
+      }
+    );
+  },
+  
+  /**
+   * 切换API地址
+   */
+  switchApiUrl() {
+    // 由于只使用lovehome.xin，此方法不再需要切换API地址
+    console.log('服务器连接失败，请检查网络或稍后再试');
+    
+    // 显示错误提示
+    wx.showModal({
+      title: '连接提示',
+      content: '连接到服务器失败，请检查网络或稍后再试。',
+      showCancel: false
+    });
+  },
+  
+  /**
+   * 监听网络状态变化
+   */
+  listenNetworkStatus() {
+    wx.onNetworkStatusChange(res => {
+      this.globalData.networkAvailable = res.isConnected;
+      this.globalData.networkType = res.networkType;
+      
+      // 网络恢复时尝试重新加载数据
+      if (res.isConnected && this.globalData.needRefreshAfterNetworkRestore) {
+        this.globalData.needRefreshAfterNetworkRestore = false;
+        // 发出网络恢复通知
+        wx.showToast({
+          title: '网络已恢复',
+          icon: 'success'
+        });
+      }
+      
+      // 网络断开时提醒用户
+      if (!res.isConnected) {
+        this.globalData.needRefreshAfterNetworkRestore = true;
+        wx.showToast({
+          title: '网络连接已断开',
+          icon: 'none'
+        });
+      }
+    });
+    
+    // 获取当前网络状态
+    wx.getNetworkType({
+      success: res => {
+        this.globalData.networkAvailable = res.networkType !== 'none';
+        this.globalData.networkType = res.networkType;
+      }
+    });
   },
 
   /**
@@ -104,6 +241,33 @@ App({
     });
   },
 
+  /**
+   * 当小程序从后台进入前台显示时触发
+   */
+  onShow() {
+    // 添加延迟确保应用实例完全初始化
+    setTimeout(() => {
+      // 确保globalData已初始化
+      if (this.globalData) {
+        // 如果网络可用但服务器连接状态为false，尝试重新连接
+        if (this.globalData.networkAvailable && !this.globalData.serverConnected) {
+          this.checkServerConnection();
+        }
+      }
+    }, 1000); // 增加1秒延迟确保应用实例已初始化
+  },
+  
+  /**
+   * 当小程序进入后台时触发
+   */
+  onHide() {
+    // 清除定时器
+    if (this.connectionRetryTimer) {
+      clearInterval(this.connectionRetryTimer);
+      this.connectionRetryTimer = null;
+    }
+  },
+  
   /**
    * 切换当前社区
    * @param {Object} community - 社区信息

@@ -1,0 +1,177 @@
+/* 登录页面样式 */
+.login-container {
+  min-height: 100vh;
+  background-color: #fff;
+  padding: 0 40rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Logo 区域 */
+.logo-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 100rpx;
+  margin-bottom: 80rpx;
+}
+
+.logo {
+  width: 180rpx;
+  height: 180rpx;
+  margin-bottom: 30rpx;
+}
+
+.app-name {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+/* 登录表单 */
+.login-form {
+  width: 100%;
+}
+
+.form-item {
+  display: flex;
+  align-items: center;
+  height: 100rpx;
+  border-bottom: 1rpx solid #eee;
+  margin-bottom: 30rpx;
+}
+
+.icon {
+  width: 40rpx;
+  height: 40rpx;
+  margin-right: 20rpx;
+}
+
+.input {
+  flex: 1;
+  height: 100%;
+  font-size: 32rpx;
+}
+
+.code-item {
+  position: relative;
+}
+
+.code-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 70rpx;
+  line-height: 70rpx;
+  padding: 0 30rpx;
+  font-size: 28rpx;
+  color: #4CAF50;
+  background-color: transparent;
+  border: 1rpx solid #4CAF50;
+  border-radius: 35rpx;
+}
+
+.code-btn.disabled {
+  color: #999;
+  border-color: #ccc;
+}
+
+.login-btn {
+  width: 100%;
+  height: 90rpx;
+  line-height: 90rpx;
+  text-align: center;
+  background-color: #4CAF50;
+  color: #fff;
+  font-size: 34rpx;
+  border-radius: 45rpx;
+  margin-top: 60rpx;
+  margin-bottom: 30rpx;
+}
+
+.login-btn.disabled {
+  background-color: #ccc;
+}
+
+/* 协议区域 */
+.agreement {
+  display: flex;
+  align-items: center;
+  font-size: 26rpx;
+  color: #666;
+  margin-bottom: 60rpx;
+}
+
+.agreement checkbox {
+  transform: scale(0.7);
+  margin-right: 10rpx;
+}
+
+.agreement-text {
+  margin-right: 5rpx;
+}
+
+.agreement-link {
+  color: #4CAF50;
+  margin-right: 5rpx;
+}
+
+/* 其他登录方式 */
+.other-login {
+  margin-top: auto;
+  margin-bottom: 60rpx;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 40rpx;
+}
+
+.line {
+  width: 100rpx;
+  height: 1rpx;
+  background-color: #ddd;
+}
+
+.divider text {
+  font-size: 26rpx;
+  color: #999;
+  margin: 0 20rpx;
+}
+
+.login-methods {
+  display: flex;
+  justify-content: center;
+}
+
+.login-method {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login-method image {
+  width: 80rpx;
+  height: 80rpx;
+  margin-bottom: 20rpx;
+}
+
+.login-method text {
+  font-size: 26rpx;
+  color: #666;
+}
+
+/* 帮助区域 */
+.help-section {
+  text-align: center;
+  margin-bottom: 40rpx;
+}
+
+.help-text {
+  font-size: 26rpx;
+  color: #4CAF50;
+  text-decoration: underline;
+} 

@@ -1,0 +1,104 @@
+<view class="workorder-list-container">
+  <!-- 顶部搜索和筛选栏 -->
+  <view class="search-filter-bar">
+    <view class="search-box">
+      <image class="search-icon" src="/src/assets/icons/search.png" mode="aspectFit"></image>
+      <input class="search-input" placeholder="搜索工单" confirm-type="search" bindinput="onSearchInput" bindconfirm="onSearch" value="{{searchText}}" />
+      <view class="search-clear" bindtap="clearSearch" wx:if="{{searchText}}">
+        <image src="/src/assets/icons/clear.png" mode="aspectFit"></image>
+      </view>
+    </view>
+    <view class="filter-btn" bindtap="toggleFilter">
+      <image src="/src/assets/icons/filter.png" mode="aspectFit"></image>
+    </view>
+  </view>
+
+  <!-- 筛选面板 -->
+  <view class="filter-panel {{showFilter ? 'show' : ''}}">
+    <view class="filter-section">
+      <view class="filter-title">状态</view>
+      <view class="filter-options">
+        <view class="filter-option {{currentFilter.status === 'all' ? 'active' : ''}}" data-type="status" data-value="all" bindtap="onFilterChange">全部</view>
+        <view class="filter-option {{currentFilter.status === 'pending' ? 'active' : ''}}" data-type="status" data-value="pending" bindtap="onFilterChange">待处理</view>
+        <view class="filter-option {{currentFilter.status === 'processing' ? 'active' : ''}}" data-type="status" data-value="processing" bindtap="onFilterChange">处理中</view>
+        <view class="filter-option {{currentFilter.status === 'completed' ? 'active' : ''}}" data-type="status" data-value="completed" bindtap="onFilterChange">已完成</view>
+        <view class="filter-option {{currentFilter.status === 'closed' ? 'active' : ''}}" data-type="status" data-value="closed" bindtap="onFilterChange">已关闭</view>
+      </view>
+    </view>
+    <view class="filter-section">
+      <view class="filter-title">类型</view>
+      <view class="filter-options">
+        <view class="filter-option {{currentFilter.type === 'all' ? 'active' : ''}}" data-type="type" data-value="all" bindtap="onFilterChange">全部</view>
+        <view class="filter-option {{currentFilter.type === 'repair' ? 'active' : ''}}" data-type="type" data-value="repair" bindtap="onFilterChange">报修</view>
+        <view class="filter-option {{currentFilter.type === 'complaint' ? 'active' : ''}}" data-type="type" data-value="complaint" bindtap="onFilterChange">投诉</view>
+        <view class="filter-option {{currentFilter.type === 'suggestion' ? 'active' : ''}}" data-type="type" data-value="suggestion" bindtap="onFilterChange">建议</view>
+        <view class="filter-option {{currentFilter.type === 'consultation' ? 'active' : ''}}" data-type="type" data-value="consultation" bindtap="onFilterChange">咨询</view>
+      </view>
+    </view>
+    <view class="filter-section">
+      <view class="filter-title">时间</view>
+      <view class="filter-options">
+        <view class="filter-option {{currentFilter.time === 'all' ? 'active' : ''}}" data-type="time" data-value="all" bindtap="onFilterChange">全部</view>
+        <view class="filter-option {{currentFilter.time === 'today' ? 'active' : ''}}" data-type="time" data-value="today" bindtap="onFilterChange">今天</view>
+        <view class="filter-option {{currentFilter.time === 'week' ? 'active' : ''}}" data-type="time" data-value="week" bindtap="onFilterChange">本周</view>
+        <view class="filter-option {{currentFilter.time === 'month' ? 'active' : ''}}" data-type="time" data-value="month" bindtap="onFilterChange">本月</view>
+      </view>
+    </view>
+    <view class="filter-actions">
+      <button class="btn-reset" bindtap="resetFilter">重置</button>
+      <button class="btn-confirm" bindtap="applyFilter">确定</button>
+    </view>
+  </view>
+
+  <!-- 遮罩层 -->
+  <view class="mask" wx:if="{{showFilter}}" bindtap="toggleFilter"></view>
+
+  <!-- 工单列表 -->
+  <scroll-view 
+    class="workorder-list" 
+    scroll-y="true" 
+    enable-back-to-top="true"
+    refresher-enabled="{{true}}"
+    refresher-triggered="{{refreshing}}"
+    bindrefresherrefresh="onRefresh"
+    bindscrolltolower="onLoadMore"
+  >
+    <!-- 无工单提示 -->
+    <view class="empty-list" wx:if="{{workorders.length === 0 && !loading}}">
+      <image src="/src/assets/icons/empty.png" mode="aspectFit"></image>
+      <text>暂无工单</text>
+      <button class="btn-create" bindtap="goToCreate">创建工单</button>
+    </view>
+
+    <!-- 工单列表 -->
+    <block wx:if="{{workorders.length > 0}}">
+      <view class="workorder-item" wx:for="{{workorders}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+        <view class="workorder-header">
+          <view class="workorder-title">{{item.title}}</view>
+          <view class="workorder-status {{item.status}}">{{statusText[item.status]}}</view>
+        </view>
+        <view class="workorder-content">{{item.content}}</view>
+        <view class="workorder-footer">
+          <view class="workorder-type">{{typeText[item.type]}}</view>
+          <view class="workorder-time">{{item.created_at_formatted}}</view>
+        </view>
+      </view>
+    </block>
+
+    <!-- 加载状态 -->
+    <view class="loading" wx:if="{{loading}}">
+      <view class="loading-spinner"></view>
+      <text>加载中...</text>
+    </view>
+
+    <!-- 加载完成提示 -->
+    <view class="load-all" wx:if="{{workorders.length > 0 && !hasMore && !loading}}">
+      <text>没有更多工单了</text>
+    </view>
+  </scroll-view>
+
+  <!-- 创建工单按钮 -->
+  <view class="create-btn" bindtap="goToCreate">
+    <image src="/src/assets/icons/add.png" mode="aspectFit"></image>
+  </view>
+</view> 

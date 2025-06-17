@@ -1,0 +1,129 @@
+<view class="notification-list-container">
+  <!-- 顶部搜索栏 -->
+  <view class="search-bar">
+    <view class="search-box">
+      <image class="search-icon" src="/src/assets/icons/edit.png" mode="aspectFit"></image>
+      <input class="search-input" placeholder="搜索通知" confirm-type="search" bindinput="onSearchInput" bindconfirm="onSearch" value="{{searchText}}" />
+      <view class="search-clear" bindtap="clearSearch" wx:if="{{searchText}}">
+        <image src="/src/assets/icons/edit.png" mode="aspectFit"></image>
+      </view>
+    </view>
+  </view>
+
+  <!-- 通知分类标签 -->
+  <scroll-view class="category-tabs" scroll-x="true" enable-flex="true">
+    <view 
+      class="category-tab {{currentCategory === 'all' ? 'active' : ''}}" 
+      bindtap="switchCategory" 
+      data-category="all"
+    >
+      全部
+    </view>
+    <view 
+      class="category-tab {{currentCategory === 'urgent' ? 'active' : ''}}" 
+      bindtap="switchCategory" 
+      data-category="urgent"
+    >
+      紧急通知
+    </view>
+    <view 
+      class="category-tab {{currentCategory === 'community' ? 'active' : ''}}" 
+      bindtap="switchCategory" 
+      data-category="community"
+    >
+      社区通知
+    </view>
+    <view 
+      class="category-tab {{currentCategory === 'property' ? 'active' : ''}}" 
+      bindtap="switchCategory" 
+      data-category="property"
+    >
+      物业通知
+    </view>
+    <view 
+      class="category-tab {{currentCategory === 'activity' ? 'active' : ''}}" 
+      bindtap="switchCategory" 
+      data-category="activity"
+    >
+      活动通知
+    </view>
+  </scroll-view>
+
+  <!-- 通知列表 -->
+  <scroll-view 
+    class="notification-list" 
+    scroll-y="true" 
+    enable-back-to-top="true"
+    refresher-enabled="{{true}}"
+    refresher-triggered="{{refreshing}}"
+    bindrefresherrefresh="onRefresh"
+    bindscrolltolower="onLoadMore"
+  >
+    <!-- 无通知提示 -->
+    <view class="empty-list" wx:if="{{notifications.length === 0 && !loading}}">
+      <image src="/src/assets/icons/default-avatar.png" mode="aspectFit"></image>
+      <text>暂无通知</text>
+    </view>
+
+    <!-- 通知列表 -->
+    <block wx:if="{{notifications.length > 0}}">
+      <view class="notification-item {{item.read ? 'read' : ''}}" wx:for="{{notifications}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+        <!-- 通知标识图标 -->
+        <view class="notification-icon {{item.category}}">
+          <image src="{{getCategoryIcon(item.category)}}" mode="aspectFit"></image>
+        </view>
+        
+        <!-- 通知内容 -->
+        <view class="notification-content">
+          <view class="notification-header">
+            <view class="notification-title">
+              <text class="urgent-tag" wx:if="{{item.is_urgent}}">紧急</text>
+              {{item.title}}
+            </view>
+            <view class="notification-time">{{item.created_at}}</view>
+          </view>
+          <view class="notification-summary">{{item.summary}}</view>
+          <view class="notification-footer">
+            <view class="notification-sender">
+              <image src="{{item.sender.avatar || '/src/assets/icons/default-avatar.png'}}" mode="aspectFill"></image>
+              <text>{{item.sender.name}}</text>
+            </view>
+            <view class="notification-meta">
+              <view class="meta-item" wx:if="{{item.attachments_count > 0}}">
+                <image src="/src/assets/icons/edit.png" mode="aspectFit"></image>
+                <text>{{item.attachments_count}}</text>
+              </view>
+              <view class="meta-item" wx:if="{{item.comments_count > 0}}">
+                <image src="/src/assets/icons/edit.png" mode="aspectFit"></image>
+                <text>{{item.comments_count}}</text>
+              </view>
+              <view class="meta-item">
+                <image src="/src/assets/icons/edit.png" mode="aspectFit"></image>
+                <text>{{item.view_count}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 未读标记 -->
+        <view class="unread-dot" wx:if="{{!item.read}}"></view>
+      </view>
+    </block>
+
+    <!-- 加载状态 -->
+    <view class="loading" wx:if="{{loading}}">
+      <view class="loading-spinner"></view>
+      <text>加载中...</text>
+    </view>
+
+    <!-- 加载完成提示 -->
+    <view class="load-all" wx:if="{{notifications.length > 0 && !hasMore && !loading}}">
+      <text>没有更多通知了</text>
+    </view>
+  </scroll-view>
+
+  <!-- 全部已读按钮 -->
+  <view class="read-all-btn" bindtap="markAllAsRead" wx:if="{{hasUnread}}">
+    <image src="/src/assets/icons/edit.png" mode="aspectFit"></image>
+  </view>
+</view> 

@@ -1,0 +1,100 @@
+ <view class="create-topic-container">
+  <!-- 页面标题 -->
+  <view class="page-header">
+    <view class="back-btn" bindtap="goBack">
+      <image src="/src/assets/icons/back.png" mode="aspectFit"></image>
+    </view>
+    <view class="page-title">发起议题</view>
+  </view>
+
+  <!-- 表单区域 -->
+  <form bindsubmit="submitForm">
+    <!-- 标题 -->
+    <view class="form-item">
+      <view class="form-label required">议题标题</view>
+      <input class="form-input" name="title" placeholder="请输入议题标题（5-50字）" value="{{formData.title}}" bindinput="onTitleInput" maxlength="50" />
+      <view class="input-counter">{{formData.title.length}}/50</view>
+    </view>
+
+    <!-- 类型 -->
+    <view class="form-item">
+      <view class="form-label required">议题类型</view>
+      <picker bindchange="onTypeChange" value="{{typeIndex}}" range="{{typeOptions}}" range-key="label">
+        <view class="picker-view">
+          <text>{{typeOptions[typeIndex].label || '请选择议题类型'}}</text>
+          <image class="picker-arrow" src="/src/assets/icons/arrow-down.png" mode="aspectFit"></image>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 内容 -->
+    <view class="form-item">
+      <view class="form-label required">议题内容</view>
+      <textarea class="form-textarea" name="content" placeholder="请详细描述议题内容，建议包含背景、目的、方案等（50-2000字）" value="{{formData.content}}" bindinput="onContentInput" maxlength="2000" />
+      <view class="input-counter">{{formData.content.length}}/2000</view>
+    </view>
+
+    <!-- 附件 -->
+    <view class="form-item">
+      <view class="form-label">附件</view>
+      <view class="attachment-list">
+        <view class="attachment-item" wx:for="{{formData.attachments}}" wx:key="tempFilePath">
+          <view class="attachment-info">
+            <image class="attachment-icon" src="{{getFileIcon(item.type)}}" mode="aspectFit"></image>
+            <text class="attachment-name">{{item.name}}</text>
+          </view>
+          <view class="attachment-delete" bindtap="deleteAttachment" data-index="{{index}}">
+            <image src="/src/assets/icons/delete.png" mode="aspectFit"></image>
+          </view>
+        </view>
+        <view class="add-attachment" bindtap="addAttachment" wx:if="{{formData.attachments.length < 5}}">
+          <image src="/src/assets/icons/add.png" mode="aspectFit"></image>
+          <text>添加附件</text>
+        </view>
+      </view>
+      <view class="attachment-tip">最多可添加5个附件，每个不超过10MB</view>
+    </view>
+
+    <!-- 投票设置 -->
+    <view class="form-item">
+      <view class="form-label">是否需要投票</view>
+      <switch checked="{{formData.needVote}}" bindchange="onVoteToggle" color="#4CAF50" />
+    </view>
+
+    <!-- 投票选项 -->
+    <block wx:if="{{formData.needVote}}">
+      <view class="form-item">
+        <view class="form-label required">投票截止时间</view>
+        <picker mode="date" value="{{formData.voteDeadline}}" start="{{minDate}}" end="{{maxDate}}" bindchange="onDateChange">
+          <view class="picker-view">
+            <text>{{formData.voteDeadline || '请选择截止日期'}}</text>
+            <image class="picker-arrow" src="/src/assets/icons/arrow-down.png" mode="aspectFit"></image>
+          </view>
+        </picker>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label required">投票选项</view>
+        <view class="vote-options">
+          <view class="vote-option" wx:for="{{formData.voteOptions}}" wx:key="index">
+            <input class="vote-option-input" placeholder="选项{{index + 1}}" value="{{item}}" bindinput="onVoteOptionInput" data-index="{{index}}" />
+            <view class="vote-option-delete" bindtap="deleteVoteOption" data-index="{{index}}" wx:if="{{formData.voteOptions.length > 2}}">
+              <image src="/src/assets/icons/delete.png" mode="aspectFit"></image>
+            </view>
+          </view>
+          <view class="add-vote-option" bindtap="addVoteOption" wx:if="{{formData.voteOptions.length < 10}}">
+            <image src="/src/assets/icons/add.png" mode="aspectFit"></image>
+            <text>添加选项</text>
+          </view>
+        </view>
+        <view class="vote-tip">至少2个选项，最多10个选项</view>
+      </view>
+    </block>
+
+    <!-- 提交按钮 -->
+    <view class="form-actions">
+      <button class="btn-cancel" bindtap="goBack">取消</button>
+      <button class="btn-submit" form-type="submit" disabled="{{submitting}}">{{submitting ? '提交中...' : '提交议题'}}</button>
+    </view>
+  </form>
+</view> 

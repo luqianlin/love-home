@@ -1,0 +1,438 @@
+/* 工单详情页样式 */
+.workorder-detail-container {
+  padding: 30rpx;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+/* 返回按钮 */
+.back-btn {
+  width: 70rpx;
+  height: 70rpx;
+  background-color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+  margin-bottom: 20rpx;
+}
+
+.back-btn image {
+  width: 40rpx;
+  height: 40rpx;
+}
+
+/* 工单头部 */
+.workorder-header {
+  background-color: #fff;
+  padding: 30rpx;
+  border-radius: 10rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.workorder-title {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 20rpx;
+}
+
+.workorder-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.workorder-id {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.workorder-status {
+  font-size: 24rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  background-color: #f5f5f5;
+  color: #666;
+}
+
+.workorder-status.pending {
+  background-color: #FFF3E0;
+  color: #FF9800;
+}
+
+.workorder-status.processing {
+  background-color: #E3F2FD;
+  color: #2196F3;
+}
+
+.workorder-status.completed {
+  background-color: #E8F5E9;
+  color: #4CAF50;
+}
+
+.workorder-status.closed {
+  background-color: #ECEFF1;
+  color: #607D8B;
+}
+
+.workorder-info {
+  border-top: 1rpx solid #eee;
+  padding-top: 20rpx;
+}
+
+.info-item {
+  display: flex;
+  margin-bottom: 10rpx;
+}
+
+.info-label {
+  width: 160rpx;
+  font-size: 26rpx;
+  color: #999;
+}
+
+.info-value {
+  flex: 1;
+  font-size: 26rpx;
+  color: #333;
+}
+
+/* 工单内容 */
+.workorder-content {
+  background-color: #fff;
+  padding: 30rpx;
+  border-radius: 10rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 20rpx;
+}
+
+.content-text {
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.6;
+}
+
+/* 工单图片 */
+.workorder-images {
+  background-color: #fff;
+  padding: 30rpx;
+  border-radius: 10rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.image-list {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.image-item {
+  width: 210rpx;
+  height: 210rpx;
+  margin-right: 15rpx;
+  margin-bottom: 15rpx;
+  border-radius: 8rpx;
+}
+
+.image-item:nth-child(3n) {
+  margin-right: 0;
+}
+
+/* 处理进度 */
+.workorder-progress {
+  background-color: #fff;
+  padding: 30rpx;
+  border-radius: 10rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.progress-timeline {
+  position: relative;
+}
+
+.progress-timeline::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10rpx;
+  width: 2rpx;
+  height: 100%;
+  background-color: #e0e0e0;
+  z-index: 1;
+}
+
+.timeline-item {
+  position: relative;
+  padding-left: 40rpx;
+  margin-bottom: 30rpx;
+  z-index: 2;
+}
+
+.timeline-item:last-child {
+  margin-bottom: 0;
+}
+
+.timeline-dot {
+  position: absolute;
+  top: 10rpx;
+  left: 0;
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 50%;
+  background-color: #e0e0e0;
+  border: 2rpx solid #fff;
+  z-index: 3;
+}
+
+.timeline-item.active .timeline-dot {
+  background-color: #4CAF50;
+}
+
+.timeline-content {
+  padding-bottom: 10rpx;
+}
+
+.timeline-title {
+  font-size: 28rpx;
+  color: #333;
+  margin-bottom: 6rpx;
+}
+
+.timeline-time {
+  font-size: 24rpx;
+  color: #999;
+}
+
+/* 处理记录 */
+.workorder-records {
+  background-color: #fff;
+  padding: 30rpx;
+  border-radius: 10rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.record-list {
+  margin-top: 20rpx;
+}
+
+.record-item {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #eee;
+}
+
+.record-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.record-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10rpx;
+}
+
+.record-operator {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.record-time {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.record-content {
+  font-size: 28rpx;
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 10rpx;
+}
+
+.record-images {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.record-image {
+  width: 150rpx;
+  height: 150rpx;
+  margin-right: 10rpx;
+  margin-bottom: 10rpx;
+  border-radius: 8rpx;
+}
+
+/* 评价 */
+.workorder-rating {
+  background-color: #fff;
+  padding: 30rpx;
+  border-radius: 10rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.rating-stars {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 30rpx;
+}
+
+.star {
+  width: 60rpx;
+  height: 60rpx;
+  margin: 0 10rpx;
+}
+
+.star image {
+  width: 100%;
+  height: 100%;
+}
+
+.rating-comment {
+  width: 100%;
+  height: 200rpx;
+  background-color: #f9f9f9;
+  border-radius: 10rpx;
+  padding: 20rpx;
+  font-size: 28rpx;
+  color: #333;
+  box-sizing: border-box;
+  margin-bottom: 30rpx;
+}
+
+.rating-comment-display {
+  background-color: #f9f9f9;
+  border-radius: 10rpx;
+  padding: 20rpx;
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.5;
+  margin-bottom: 20rpx;
+}
+
+.rating-time {
+  font-size: 24rpx;
+  color: #999;
+  text-align: right;
+}
+
+.btn-submit {
+  width: 100%;
+  height: 80rpx;
+  line-height: 80rpx;
+  background-color: #4CAF50;
+  color: #fff;
+  font-size: 28rpx;
+  border-radius: 40rpx;
+}
+
+/* 操作按钮 */
+.workorder-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 30rpx;
+  margin-bottom: 30rpx;
+}
+
+.btn-cancel, .btn-close, .btn-contact {
+  width: 45%;
+  height: 80rpx;
+  line-height: 80rpx;
+  font-size: 28rpx;
+  border-radius: 40rpx;
+}
+
+.btn-cancel {
+  background-color: #f5f5f5;
+  color: #666;
+  border: 1rpx solid #ddd;
+}
+
+.btn-close {
+  background-color: #f5f5f5;
+  color: #666;
+  border: 1rpx solid #ddd;
+}
+
+.btn-contact {
+  background-color: #4CAF50;
+  color: #fff;
+}
+
+/* 单个按钮样式 */
+.workorder-actions button:only-child {
+  width: 100%;
+}
+
+/* 加载状态 */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100rpx 0;
+}
+
+.loading-spinner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 6rpx solid #f3f3f3;
+  border-top: 6rpx solid #4CAF50;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20rpx;
+}
+
+.loading-container text {
+  font-size: 28rpx;
+  color: #999;
+}
+
+/* 错误提示 */
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100rpx 0;
+}
+
+.error-container image {
+  width: 200rpx;
+  height: 200rpx;
+  margin-bottom: 30rpx;
+}
+
+.error-container text {
+  font-size: 28rpx;
+  color: #999;
+  margin-bottom: 30rpx;
+}
+
+.btn-retry {
+  width: 200rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  background-color: #4CAF50;
+  color: #fff;
+  font-size: 28rpx;
+  border-radius: 40rpx;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+} 

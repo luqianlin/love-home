@@ -1,0 +1,83 @@
+<view class="create-workorder-container">
+  <!-- 页面标题 -->
+  <view class="page-header">
+    <view class="back-btn" bindtap="goBack">
+      <image src="/src/assets/icons/back.png" mode="aspectFit"></image>
+    </view>
+    <view class="page-title">创建工单</view>
+  </view>
+
+  <!-- 表单区域 -->
+  <form bindsubmit="submitForm">
+    <!-- 标题 -->
+    <view class="form-item">
+      <view class="form-label required">工单标题</view>
+      <input class="form-input" name="title" placeholder="请输入工单标题（5-50字）" value="{{formData.title}}" bindinput="onTitleInput" maxlength="50" />
+      <view class="input-counter">{{formData.title.length}}/50</view>
+    </view>
+
+    <!-- 类型 -->
+    <view class="form-item">
+      <view class="form-label required">工单类型</view>
+      <picker bindchange="onTypeChange" value="{{typeIndex}}" range="{{typeOptions}}" range-key="label">
+        <view class="picker-view">
+          <text>{{typeOptions[typeIndex].label || '请选择工单类型'}}</text>
+          <image class="picker-arrow" src="/src/assets/icons/arrow-down.png" mode="aspectFit"></image>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 位置信息 -->
+    <view class="form-item">
+      <view class="form-label">位置信息</view>
+      <view class="location-input">
+        <input class="form-input" name="location" placeholder="请输入位置信息（如：1号楼2单元303）" value="{{formData.location}}" bindinput="onLocationInput" />
+        <view class="location-btn" bindtap="chooseLocation">
+          <image src="/src/assets/icons/location.png" mode="aspectFit"></image>
+        </view>
+      </view>
+    </view>
+
+    <!-- 内容 -->
+    <view class="form-item">
+      <view class="form-label required">问题描述</view>
+      <textarea class="form-textarea" name="content" placeholder="请详细描述您的问题，以便我们更好地为您解决（20-500字）" value="{{formData.content}}" bindinput="onContentInput" maxlength="500" />
+      <view class="input-counter">{{formData.content.length}}/500</view>
+    </view>
+
+    <!-- 图片上传 -->
+    <view class="form-item">
+      <view class="form-label">上传图片</view>
+      <view class="upload-list">
+        <view class="upload-item" wx:for="{{formData.images}}" wx:key="tempFilePath">
+          <image class="upload-image" src="{{item.tempFilePath}}" mode="aspectFill"></image>
+          <view class="upload-delete" bindtap="deleteImage" data-index="{{index}}">
+            <image src="/src/assets/icons/delete.png" mode="aspectFit"></image>
+          </view>
+        </view>
+        <view class="upload-add" bindtap="chooseImage" wx:if="{{formData.images.length < 9}}">
+          <image src="/src/assets/icons/add-image.png" mode="aspectFit"></image>
+        </view>
+      </view>
+      <view class="upload-tip">最多可上传9张图片，每张不超过5MB</view>
+    </view>
+
+    <!-- 联系人 -->
+    <view class="form-item">
+      <view class="form-label required">联系人</view>
+      <input class="form-input" name="contactName" placeholder="请输入联系人姓名" value="{{formData.contactName}}" bindinput="onContactNameInput" />
+    </view>
+
+    <!-- 联系电话 -->
+    <view class="form-item">
+      <view class="form-label required">联系电话</view>
+      <input class="form-input" name="contactPhone" type="number" placeholder="请输入联系电话" value="{{formData.contactPhone}}" bindinput="onContactPhoneInput" />
+    </view>
+
+    <!-- 提交按钮 -->
+    <view class="form-actions">
+      <button class="btn-cancel" bindtap="goBack">取消</button>
+      <button class="btn-submit" form-type="submit" disabled="{{submitting}}">{{submitting ? '提交中...' : '提交工单'}}</button>
+    </view>
+  </form>
+</view> 

@@ -1,0 +1,132 @@
+<view class="notification-detail-container">
+  <!-- 加载状态 -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text>加载中...</text>
+  </view>
+
+  <!-- 通知详情 -->
+  <block wx:if="{{!loading && notification}}">
+    <!-- 通知头部 -->
+    <view class="notification-header">
+      <view class="notification-title">{{notification.title}}</view>
+      <view class="notification-meta">
+        <view class="notification-type {{notification.category}}">{{categoryText[notification.category]}}</view>
+        <view class="notification-date">{{notification.created_at}}</view>
+      </view>
+    </view>
+
+    <!-- 紧急标识 -->
+    <view class="urgent-banner" wx:if="{{notification.is_urgent}}">
+      <image src="/src/assets/icons/urgent-large.png" mode="aspectFit"></image>
+      <text>紧急通知</text>
+    </view>
+
+    <!-- 通知内容 -->
+    <view class="notification-content">
+      <rich-text nodes="{{notification.content}}"></rich-text>
+    </view>
+
+    <!-- 附件列表 -->
+    <view class="attachments" wx:if="{{notification.attachments && notification.attachments.length > 0}}">
+      <view class="section-title">附件</view>
+      <view class="attachment-list">
+        <view class="attachment-item" wx:for="{{notification.attachments}}" wx:key="id" bindtap="previewAttachment" data-url="{{item.url}}" data-type="{{item.type}}">
+          <image class="attachment-icon" src="{{getAttachmentIcon(item.type)}}" mode="aspectFit"></image>
+          <view class="attachment-info">
+            <text class="attachment-name">{{item.name}}</text>
+            <text class="attachment-size">{{formatFileSize(item.size)}}</text>
+          </view>
+          <view class="attachment-download">
+            <image src="/src/assets/icons/download.png" mode="aspectFit"></image>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 发布者信息 -->
+    <view class="publisher-info">
+      <image class="publisher-avatar" src="{{notification.sender.avatar || '/src/assets/icons/default-avatar.png'}}" mode="aspectFill"></image>
+      <view class="publisher-detail">
+        <text class="publisher-name">{{notification.sender.name}}</text>
+        <text class="publisher-role">{{notification.sender.role}}</text>
+      </view>
+    </view>
+
+    <!-- 评论区 -->
+    <view class="comments-section">
+      <view class="section-title">
+        <text>评论 ({{comments.length}})</text>
+      </view>
+
+      <!-- 评论列表 -->
+      <view class="comments-list" wx:if="{{comments.length > 0}}">
+        <view class="comment-item" wx:for="{{comments}}" wx:key="id">
+          <image class="comment-avatar" src="{{item.user.avatar || '/src/assets/icons/default-avatar.png'}}" mode="aspectFill"></image>
+          <view class="comment-content">
+            <view class="comment-header">
+              <text class="comment-username">{{item.user.name}}</text>
+              <text class="comment-time">{{item.created_at}}</text>
+            </view>
+            <view class="comment-text">{{item.content}}</view>
+            <view class="comment-actions">
+              <view class="action-like {{item.liked ? 'liked' : ''}}" bindtap="likeComment" data-id="{{item.id}}">
+                <image src="{{item.liked ? '/src/assets/icons/liked.png' : '/src/assets/icons/like.png'}}" mode="aspectFit"></image>
+                <text>{{item.likes_count || '点赞'}}</text>
+              </view>
+              <view class="action-reply" bindtap="replyComment" data-id="{{item.id}}" data-username="{{item.user.name}}">
+                <image src="/src/assets/icons/reply.png" mode="aspectFit"></image>
+                <text>回复</text>
+              </view>
+            </view>
+
+            <!-- 回复列表 -->
+            <view class="replies-list" wx:if="{{item.replies && item.replies.length > 0}}">
+              <view class="reply-item" wx:for="{{item.replies}}" wx:for-item="reply" wx:key="id">
+                <view class="reply-content">
+                  <text class="reply-username">{{reply.user.name}}</text>
+                  <text wx:if="{{reply.reply_to}}" class="reply-to">回复</text>
+                  <text wx:if="{{reply.reply_to}}" class="reply-to-username">{{reply.reply_to.name}}</text>
+                  <text>: {{reply.content}}</text>
+                </view>
+                <text class="reply-time">{{reply.created_at}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 无评论提示 -->
+      <view class="no-comments" wx:else>
+        <image src="/src/assets/icons/no-comments.png" mode="aspectFit"></image>
+        <text>暂无评论，快来发表您的看法吧</text>
+      </view>
+    </view>
+  </block>
+
+  <!-- 错误提示 -->
+  <view class="error-container" wx:if="{{!loading && !notification && error}}">
+    <image src="/src/assets/icons/error.png" mode="aspectFit"></image>
+    <text>{{error}}</text>
+    <button class="btn-retry" bindtap="loadNotificationDetail">重试</button>
+  </view>
+
+  <!-- 评论输入框 -->
+  <view class="comment-input-container">
+    <input 
+      class="comment-input" 
+      placeholder="{{replyTo ? '回复 ' + replyTo + '...' : '写下您的评论...'}}" 
+      value="{{commentText}}"
+      bindinput="onCommentInput"
+      confirm-type="send"
+      bindconfirm="submitComment"
+      focus="{{commentFocus}}"
+    />
+    <view class="send-btn {{commentText ? 'active' : ''}}" bindtap="submitComment">发送</view>
+  </view>
+
+  <!-- 分享按钮 -->
+  <button class="share-btn" open-type="share">
+    <image src="/src/assets/icons/share.png" mode="aspectFit"></image>
+  </button>
+</view>

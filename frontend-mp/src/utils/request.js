@@ -2,8 +2,46 @@
  * 网络请求工具类
  */
 
-// 获取应用实例
-const app = getApp();
+// 不在文件顶部直接获取应用实例，而是在函数内部获取
+// const app = getApp();
+
+/**
+ * 检查服务器连接状态
+ * @param {Function} successCallback - 连接成功回调
+ * @param {Function} failCallback - 连接失败回调
+ */
+const checkServerStatus = (successCallback, failCallback) => {
+  // 获取app实例前增加小延迟，确保小程序已完全初始化
+  setTimeout(() => {
+    const app = getApp(); // 在函数内部获取应用实例
+    
+    // 检查app是否已经初始化
+    if (!app || !app.globalData || !app.globalData.baseUrl) {
+      console.error('应用实例未初始化或baseUrl未定义');
+      typeof failCallback === 'function' && failCallback({
+        errMsg: '应用实例未初始化'
+      });
+      return;
+    }
+    
+    // 使用健康检查端点
+    wx.request({
+      url: `${app.globalData.baseUrl}/health`,
+      method: 'GET',
+      timeout: 10000, // 10秒超时
+      success: (res) => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          typeof successCallback === 'function' && successCallback(res);
+        } else {
+          typeof failCallback === 'function' && failCallback(res);
+        }
+      },
+      fail: (err) => {
+        typeof failCallback === 'function' && failCallback(err);
+      }
+    });
+  }, 500); // 增加500ms延迟，确保应用初始化完成
+};
 
 /**
  * 封装请求方法
@@ -17,6 +55,16 @@ const app = getApp();
  * @param {Function} options.complete - 完成回调
  */
 const request = (options) => {
+  const app = getApp(); // 在函数内部获取应用实例
+  
+  // 检查app是否已经初始化
+  if (!app || !app.globalData || !app.globalData.baseUrl) {
+    console.error('应用实例未初始化或baseUrl未定义');
+    return Promise.reject({
+      errMsg: '应用实例未初始化'
+    });
+  }
+  
   // 默认参数
   const defaults = {
     method: 'GET',
@@ -58,6 +106,7 @@ const request = (options) => {
       method: options.method,
       data: options.data,
       header,
+      timeout: options.timeout || 30000, // 设置30秒超时
       success: (res) => {
         // 请求成功，处理响应
         if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -87,9 +136,25 @@ const request = (options) => {
         }
       },
       fail: (err) => {
-        // 请求失败
+        // 请求失败，提供更详细的错误信息
+        console.error('请求失败:', err);
+        let errorMsg = '网络异常，请稍后再试';
+        
+        // 检查具体错误类型
+        if (err.errMsg) {
+          if (err.errMsg.includes('request:fail socket')) {
+            errorMsg = '服务器连接失败，请检查网络';
+          } else if (err.errMsg.includes('ssl')) {
+            errorMsg = 'SSL证书验证失败';
+          } else if (err.errMsg.includes('timeout')) {
+            errorMsg = '请求超时，请稍后再试';
+          } else if (err.errMsg.includes('CONNECTION_CLOSED')) {
+            errorMsg = '服务器连接中断，请稍后再试';
+          }
+        }
+        
         wx.showToast({
-          title: '网络异常，请稍后再试',
+          title: errorMsg,
           icon: 'none',
           duration: 2000
         });
@@ -107,6 +172,9 @@ const request = (options) => {
 
 // 导出请求方法
 module.exports = {
+  // 检查服务器状态
+  checkServerStatus,
+  
   // 基础请求方法
   request,
 

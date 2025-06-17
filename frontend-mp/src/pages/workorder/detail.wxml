@@ -1,0 +1,181 @@
+<view class="workorder-detail-container">
+  <!-- 返回按钮 -->
+  <view class="back-btn" bindtap="goBack">
+    <image src="/src/assets/icons/back.png" mode="aspectFit"></image>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text>正在加载工单详情...</text>
+  </view>
+
+  <!-- 工单详情 -->
+  <block wx:if="{{!loading && workorder}}">
+    <!-- 工单头部信息 -->
+    <view class="workorder-header">
+      <view class="workorder-title">{{workorder.title}}</view>
+      <view class="workorder-meta">
+        <view class="workorder-id">工单号: {{workorder.order_number}}</view>
+        <view class="workorder-status {{workorder.status}}">{{statusText[workorder.status]}}</view>
+      </view>
+      <view class="workorder-info">
+        <view class="info-item">
+          <view class="info-label">提交时间</view>
+          <view class="info-value">{{workorder.created_at_formatted}}</view>
+        </view>
+        <view class="info-item">
+          <view class="info-label">工单类型</view>
+          <view class="info-value">{{typeText[workorder.type]}}</view>
+        </view>
+        <view class="info-item" wx:if="{{workorder.location}}">
+          <view class="info-label">位置信息</view>
+          <view class="info-value">{{workorder.location}}</view>
+        </view>
+        <view class="info-item" wx:if="{{workorder.contact_name}}">
+          <view class="info-label">联系人</view>
+          <view class="info-value">{{workorder.contact_name}}</view>
+        </view>
+        <view class="info-item" wx:if="{{workorder.contact_phone}}">
+          <view class="info-label">联系电话</view>
+          <view class="info-value">{{workorder.contact_phone}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 工单内容 -->
+    <view class="workorder-content">
+      <view class="section-title">问题描述</view>
+      <view class="content-text">{{workorder.content}}</view>
+    </view>
+
+    <!-- 工单图片 -->
+    <view class="workorder-images" wx:if="{{workorder.images && workorder.images.length > 0}}">
+      <view class="section-title">相关图片</view>
+      <view class="image-list">
+        <image 
+          class="image-item" 
+          wx:for="{{workorder.images}}" 
+          wx:key="index" 
+          src="{{item}}" 
+          mode="aspectFill"
+          bindtap="previewImage"
+          data-index="{{index}}"
+        ></image>
+      </view>
+    </view>
+
+    <!-- 处理进度 -->
+    <view class="workorder-progress">
+      <view class="section-title">处理进度</view>
+      <view class="progress-timeline">
+        <view class="timeline-item {{workorder.status === 'pending' || workorder.status === 'processing' || workorder.status === 'completed' || workorder.status === 'closed' ? 'active' : ''}}" data-step="submitted">
+          <view class="timeline-dot"></view>
+          <view class="timeline-content">
+            <view class="timeline-title">工单提交</view>
+            <view class="timeline-time">{{workorder.created_at_formatted}}</view>
+          </view>
+        </view>
+        <view class="timeline-item {{workorder.status === 'processing' || workorder.status === 'completed' || workorder.status === 'closed' ? 'active' : ''}}" data-step="processing">
+          <view class="timeline-dot"></view>
+          <view class="timeline-content">
+            <view class="timeline-title">处理中</view>
+            <view class="timeline-time" wx:if="{{workorder.processing_time}}">{{workorder.processing_time_formatted}}</view>
+          </view>
+        </view>
+        <view class="timeline-item {{workorder.status === 'completed' || workorder.status === 'closed' ? 'active' : ''}}" data-step="completed">
+          <view class="timeline-dot"></view>
+          <view class="timeline-content">
+            <view class="timeline-title">处理完成</view>
+            <view class="timeline-time" wx:if="{{workorder.completed_time}}">{{workorder.completed_time_formatted}}</view>
+          </view>
+        </view>
+        <view class="timeline-item {{workorder.status === 'closed' ? 'active' : ''}}" data-step="closed">
+          <view class="timeline-dot"></view>
+          <view class="timeline-content">
+            <view class="timeline-title">工单关闭</view>
+            <view class="timeline-time" wx:if="{{workorder.closed_time}}">{{workorder.closed_time_formatted}}</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 处理记录 -->
+    <view class="workorder-records" wx:if="{{records.length > 0}}">
+      <view class="section-title">处理记录</view>
+      <view class="record-list">
+        <view class="record-item" wx:for="{{records}}" wx:key="id">
+          <view class="record-header">
+            <view class="record-operator">{{item.operator_name}}</view>
+            <view class="record-time">{{item.created_at_formatted}}</view>
+          </view>
+          <view class="record-content">{{item.content}}</view>
+          <view class="record-images" wx:if="{{item.images && item.images.length > 0}}">
+            <image 
+              class="record-image" 
+              wx:for="{{item.images}}" 
+              wx:for-item="image" 
+              wx:key="index" 
+              src="{{image}}" 
+              mode="aspectFill"
+              bindtap="previewRecordImage"
+              data-record-index="{{index}}"
+              data-image-index="{{index}}"
+            ></image>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 评价 -->
+    <view class="workorder-rating" wx:if="{{workorder.status === 'completed' && !workorder.rating}}">
+      <view class="section-title">服务评价</view>
+      <view class="rating-stars">
+        <view 
+          class="star {{ratingValue >= index + 1 ? 'active' : ''}}" 
+          wx:for="{{5}}" 
+          wx:key="index"
+          bindtap="setRating"
+          data-value="{{index + 1}}"
+        >
+          <image src="{{ratingValue >= index + 1 ? '/src/assets/icons/star-active.png' : '/src/assets/icons/star.png'}}" mode="aspectFit"></image>
+        </view>
+      </view>
+      <textarea class="rating-comment" placeholder="请输入您的评价内容（选填）" bindinput="onCommentInput" value="{{ratingComment}}"></textarea>
+      <button class="btn-submit" bindtap="submitRating">提交评价</button>
+    </view>
+
+    <!-- 已评价 -->
+    <view class="workorder-rating" wx:if="{{workorder.rating}}">
+      <view class="section-title">我的评价</view>
+      <view class="rating-stars">
+        <view class="star active" wx:for="{{workorder.rating}}" wx:key="index">
+          <image src="/src/assets/icons/star-active.png" mode="aspectFit"></image>
+        </view>
+        <view class="star" wx:for="{{5 - workorder.rating}}" wx:key="index">
+          <image src="/src/assets/icons/star.png" mode="aspectFit"></image>
+        </view>
+      </view>
+      <view class="rating-comment-display" wx:if="{{workorder.rating_comment}}">{{workorder.rating_comment}}</view>
+      <view class="rating-time">评价时间：{{workorder.rating_time_formatted}}</view>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="workorder-actions">
+      <block wx:if="{{workorder.status === 'pending'}}">
+        <button class="btn-cancel" bindtap="cancelWorkOrder">取消工单</button>
+      </block>
+      <block wx:if="{{workorder.status === 'completed'}}">
+        <button class="btn-close" bindtap="closeWorkOrder">关闭工单</button>
+      </block>
+      <button class="btn-contact" bindtap="contactService">联系客服</button>
+    </view>
+  </block>
+
+  <!-- 错误提示 -->
+  <view class="error-container" wx:if="{{!loading && !workorder}}">
+    <image src="/src/assets/icons/error.png" mode="aspectFit"></image>
+    <text>加载工单失败，请检查网络后重试</text>
+    <button class="btn-retry" bindtap="refreshWorkOrder">重新加载</button>
+  </view>
+</view> 

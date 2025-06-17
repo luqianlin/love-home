@@ -1,0 +1,86 @@
+<view class="profile-container">
+  <!-- 用户未登录状态 -->
+  <view class="not-login" wx:if="{{!isLogin}}">
+    <image class="login-avatar" src="/src/assets/icons/default-avatar.png" mode="aspectFill"></image>
+    <view class="login-text">您尚未登录</view>
+    <button class="login-btn" bindtap="goToLogin">立即登录</button>
+  </view>
+
+  <!-- 用户已登录状态 -->
+  <block wx:else>
+    <!-- 用户信息卡片 -->
+    <view class="user-card">
+      <view class="user-info">
+        <image class="user-avatar" src="{{userInfo.avatar || '/src/assets/icons/default-avatar.png'}}" mode="aspectFill"></image>
+        <view class="user-detail">
+          <view class="user-name">{{userInfo.name}}</view>
+          <view class="user-id">ID: {{userInfo.id}}</view>
+        </view>
+      </view>
+      <view class="edit-profile" bindtap="editProfile">
+        <image src="/src/assets/icons/edit.png" mode="aspectFit"></image>
+        <text>编辑资料</text>
+      </view>
+    </view>
+
+    <!-- 社区信息 -->
+    <view class="community-info" bindtap="switchCommunity">
+      <view class="community-name">
+        <image src="/src/assets/icons/community.png" mode="aspectFit"></image>
+        <text>{{currentCommunity.name || '未选择社区'}}</text>
+      </view>
+      <view class="community-switch">
+        <text>切换社区</text>
+        <image src="/src/assets/icons/arrow-right.png" mode="aspectFit"></image>
+      </view>
+    </view>
+
+    <!-- 功能菜单 -->
+    <view class="menu-list">
+      <view class="menu-group">
+        <view class="menu-item" bindtap="goToMyTopics">
+          <image class="menu-icon" src="/src/assets/icons/topic-menu.png" mode="aspectFit"></image>
+          <text class="menu-text">我的议题</text>
+          <image class="menu-arrow" src="/src/assets/icons/arrow-right.png" mode="aspectFit"></image>
+        </view>
+        <view class="menu-item" bindtap="goToMyWorkOrders">
+          <image class="menu-icon" src="/src/assets/icons/repair-menu.png" mode="aspectFit"></image>
+          <text class="menu-text">我的工单</text>
+          <image class="menu-arrow" src="/src/assets/icons/arrow-right.png" mode="aspectFit"></image>
+        </view>
+        <view class="menu-item" bindtap="goToMyNotifications">
+          <image class="menu-icon" src="/src/assets/icons/notification-menu.png" mode="aspectFit"></image>
+          <text class="menu-text">我的通知</text>
+          <view class="badge" wx:if="{{unreadCount > 0}}">{{unreadCount > 99 ? '99+' : unreadCount}}</view>
+          <image class="menu-arrow" src="/src/assets/icons/arrow-right.png" mode="aspectFit"></image>
+        </view>
+      </view>
+
+      <view class="menu-group">
+        <view class="menu-item" bindtap="goToSettings">
+          <image class="menu-icon" src="/src/assets/icons/settings.png" mode="aspectFit"></image>
+          <text class="menu-text">设置</text>
+          <image class="menu-arrow" src="/src/assets/icons/arrow-right.png" mode="aspectFit"></image>
+        </view>
+        <view class="menu-item" bindtap="contactUs">
+          <image class="menu-icon" src="/src/assets/icons/contact.png" mode="aspectFit"></image>
+          <text class="menu-text">联系我们</text>
+          <image class="menu-arrow" src="/src/assets/icons/arrow-right.png" mode="aspectFit"></image>
+        </view>
+        <view class="menu-item" bindtap="aboutUs">
+          <image class="menu-icon" src="/src/assets/icons/about.png" mode="aspectFit"></image>
+          <text class="menu-text">关于我们</text>
+          <image class="menu-arrow" src="/src/assets/icons/arrow-right.png" mode="aspectFit"></image>
+        </view>
+      </view>
+    </view>
+
+    <!-- 退出登录 -->
+    <view class="logout-btn" bindtap="logout">退出登录</view>
+  </block>
+
+  <!-- 版本信息 -->
+  <view class="version-info">
+    <text>智慧社区 v1.0.0</text>
+  </view>
+</view> 

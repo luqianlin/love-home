@@ -1,0 +1,52 @@
+<view class="login-container">
+  <view class="logo-container">
+    <image class="logo" src="/src/assets/icons/logo.png" mode="aspectFit"></image>
+    <text class="app-name">智慧社区</text>
+  </view>
+
+  <view class="login-form">
+    <view class="form-item">
+      <image class="icon" src="/src/assets/icons/phone.png" mode="aspectFit"></image>
+      <input class="input" type="number" placeholder="请输入手机号" value="{{phone}}" bindinput="onPhoneInput" maxlength="11" />
+    </view>
+    
+    <view class="form-item code-item">
+      <image class="icon" src="/src/assets/icons/lock.png" mode="aspectFit"></image>
+      <input class="input" type="number" placeholder="请输入验证码" value="{{code}}" bindinput="onCodeInput" maxlength="6" />
+      <button class="code-btn {{codeBtnDisabled ? 'disabled' : ''}}" bindtap="getVerificationCode" disabled="{{codeBtnDisabled}}">
+        {{codeBtnText}}
+      </button>
+    </view>
+
+    <button class="login-btn {{loginBtnDisabled ? 'disabled' : ''}}" bindtap="login" disabled="{{loginBtnDisabled}}">
+      登录
+    </button>
+
+    <view class="agreement">
+      <checkbox checked="{{agreeProtocol}}" bindtap="toggleAgreement"></checkbox>
+      <text class="agreement-text">我已阅读并同意</text>
+      <text class="agreement-link" bindtap="showUserAgreement">《用户协议》</text>
+      <text class="agreement-text">和</text>
+      <text class="agreement-link" bindtap="showPrivacyPolicy">《隐私政策》</text>
+    </view>
+  </view>
+
+  <view class="other-login">
+    <view class="divider">
+      <view class="line"></view>
+      <text>其他登录方式</text>
+      <view class="line"></view>
+    </view>
+    
+    <view class="login-methods">
+      <view class="login-method" bindtap="wechatLogin">
+        <image src="/src/assets/icons/wechat.png" mode="aspectFit"></image>
+        <text>微信登录</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="help-section">
+    <text class="help-text" bindtap="contactCustomerService">遇到问题？联系客服</text>
+  </view>
+</view> 

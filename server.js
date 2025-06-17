@@ -32,6 +32,17 @@ app.use(express.urlencoded({ extended: true })); // URL编码解析
 const morganFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
 app.use(morgan(morganFormat));
 
+// 健康检查端点 - 直接在根级别添加，确保优先匹配
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    message: '服务正常运行',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // 静态文件服务
 app.use(express.static(path.join(__dirname, 'public')));
 

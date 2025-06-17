@@ -1,0 +1,128 @@
+<view class="container">
+  <view class="header">
+    <view class="title">选择社区</view>
+    <view class="subtitle">请选择您所在的社区</view>
+  </view>
+
+  <view class="location-info" wx:if="{{locationStatus}}">
+    <view class="location-icon">
+      <image src="/src/assets/icons/location.png" mode="aspectFit"></image>
+    </view>
+    <view class="location-text">
+      <text class="label">您当前的位置：</text>
+      <text class="value">{{locationStatus === 'success' ? locationAddress : '定位失败，请手动选择社区'}}</text>
+    </view>
+    <view class="action-buttons">
+      <view class="refresh-btn" bindtap="refreshLocation">
+        <text>刷新</text>
+      </view>
+      <view class="choose-location-btn" bindtap="chooseLocation">
+        <text>选择位置</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 匹配到的社区 -->
+  <view class="community-section" wx:if="{{matchedCommunity}}">
+    <view class="section-title">您所在的社区</view>
+    <view class="community-card matched">
+      <view class="community-info">
+        <view class="community-name">{{matchedCommunity.name}}</view>
+        <view class="community-address">{{matchedCommunity.address}}</view>
+        <view class="community-distance" wx:if="{{matchedCommunity.hasDistance}}">
+          距离您 {{matchedCommunity.distanceText}}
+        </view>
+      </view>
+      <view class="community-action">
+        <button 
+          class="btn {{currentCommunity && currentCommunity.id === matchedCommunity.id ? 'btn-disabled' : 'btn-primary'}}" 
+          disabled="{{currentCommunity && currentCommunity.id === matchedCommunity.id}}"
+          bindtap="handleSwitch" 
+          data-id="{{matchedCommunity.id}}"
+        >
+          {{currentCommunity && currentCommunity.id === matchedCommunity.id ? '当前使用中' : '切换为当前社区'}}
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 附近的社区列表 -->
+  <view class="community-section" wx:if="{{nearbyCommunities.length > 0}}">
+    <view class="section-title">附近的社区</view>
+    <view class="community-list">
+      <view class="community-card" wx:for="{{nearbyCommunities}}" wx:key="id">
+        <view class="community-info">
+          <view class="community-name">{{item.name}}</view>
+          <view class="community-address">{{item.address}}</view>
+          <view class="community-distance" wx:if="{{item.hasDistance}}">
+            距离您 {{item.distanceText}}
+          </view>
+        </view>
+        <view class="community-action">
+          <button 
+            class="btn {{currentCommunity && currentCommunity.id === item.id ? 'btn-disabled' : 'btn-primary'}}" 
+            disabled="{{currentCommunity && currentCommunity.id === item.id}}"
+            bindtap="handleSwitch" 
+            data-id="{{item.id}}"
+          >
+            {{currentCommunity && currentCommunity.id === item.id ? '当前使用中' : '切换'}}
+          </button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 用户已加入的社区列表 -->
+  <view class="community-section" wx:if="{{userCommunities.length > 0}}">
+    <view class="section-title">您已加入的社区</view>
+    <view class="community-list">
+      <view 
+        class="community-card {{currentCommunity && currentCommunity.id === item.community_id ? 'current' : ''}}" 
+        wx:for="{{userCommunities}}" 
+        wx:key="community_id"
+      >
+        <view class="community-info">
+          <view class="community-name">{{item.Community.name}}</view>
+          <view class="community-address">{{item.Community.address}}</view>
+          <view class="community-tags">
+            <text class="tag tag-primary" wx:if="{{item.is_default}}">默认</text>
+            <text class="tag tag-info" wx:if="{{item.building}}">{{item.building}}栋</text>
+            <text class="tag tag-secondary">{{roleMap[item.role] || item.role}}</text>
+          </view>
+        </view>
+        <view class="community-action">
+          <button 
+            class="btn btn-outline" 
+            wx:if="{{!item.is_default}}" 
+            bindtap="handleSetDefault" 
+            data-id="{{item.community_id}}"
+          >
+            设为默认
+          </button>
+          <button 
+            class="btn {{currentCommunity && currentCommunity.id === item.community_id ? 'btn-disabled' : 'btn-primary'}}" 
+            disabled="{{currentCommunity && currentCommunity.id === item.community_id}}"
+            bindtap="handleSwitch" 
+            data-id="{{item.community_id}}"
+          >
+            {{currentCommunity && currentCommunity.id === item.community_id ? '当前使用中' : '切换'}}
+          </button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 地图区域 -->
+  <view class="map-container">
+    <map 
+      id="communityMap"
+      class="map"
+      longitude="{{mapCenter.longitude}}"
+      latitude="{{mapCenter.latitude}}"
+      scale="{{mapScale}}"
+      markers="{{markers}}"
+      show-location="true"
+      bindmarkertap="handleMarkerTap"
+    ></map>
+  </view>
+</view>

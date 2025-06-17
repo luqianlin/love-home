@@ -1,0 +1,143 @@
+<view class="finance-list-container">
+  <!-- 顶部搜索和筛选栏 -->
+  <view class="search-filter-bar">
+    <view class="search-box">
+      <image class="search-icon" src="/src/assets/icons/search.png" mode="aspectFit"></image>
+      <input class="search-input" placeholder="搜索财务报告" confirm-type="search" bindinput="onSearchInput" bindconfirm="onSearch" value="{{searchText}}" />
+      <view class="search-clear" bindtap="clearSearch" wx:if="{{searchText}}">
+        <image src="/src/assets/icons/clear.png" mode="aspectFit"></image>
+      </view>
+    </view>
+    <view class="filter-btn" bindtap="toggleFilter">
+      <image src="/src/assets/icons/filter.png" mode="aspectFit"></image>
+    </view>
+  </view>
+
+  <!-- 筛选面板 -->
+  <view class="filter-panel {{showFilter ? 'show' : ''}}">
+    <view class="filter-section">
+      <view class="filter-title">年份</view>
+      <view class="filter-options">
+        <view class="filter-option {{currentFilter.year === 'all' ? 'active' : ''}}" data-type="year" data-value="all" bindtap="onFilterChange">全部</view>
+        <view class="filter-option {{currentFilter.year === '2025' ? 'active' : ''}}" data-type="year" data-value="2025" bindtap="onFilterChange">2025年</view>
+        <view class="filter-option {{currentFilter.year === '2024' ? 'active' : ''}}" data-type="year" data-value="2024" bindtap="onFilterChange">2024年</view>
+        <view class="filter-option {{currentFilter.year === '2023' ? 'active' : ''}}" data-type="year" data-value="2023" bindtap="onFilterChange">2023年</view>
+      </view>
+    </view>
+    <view class="filter-section">
+      <view class="filter-title">类型</view>
+      <view class="filter-options">
+        <view class="filter-option {{currentFilter.type === 'all' ? 'active' : ''}}" data-type="type" data-value="all" bindtap="onFilterChange">全部</view>
+        <view class="filter-option {{currentFilter.type === 'income' ? 'active' : ''}}" data-type="type" data-value="income" bindtap="onFilterChange">收入</view>
+        <view class="filter-option {{currentFilter.type === 'expense' ? 'active' : ''}}" data-type="type" data-value="expense" bindtap="onFilterChange">支出</view>
+        <view class="filter-option {{currentFilter.type === 'summary' ? 'active' : ''}}" data-type="type" data-value="summary" bindtap="onFilterChange">汇总</view>
+      </view>
+    </view>
+    <view class="filter-section">
+      <view class="filter-title">季度</view>
+      <view class="filter-options">
+        <view class="filter-option {{currentFilter.quarter === 'all' ? 'active' : ''}}" data-type="quarter" data-value="all" bindtap="onFilterChange">全部</view>
+        <view class="filter-option {{currentFilter.quarter === 'Q1' ? 'active' : ''}}" data-type="quarter" data-value="Q1" bindtap="onFilterChange">第一季度</view>
+        <view class="filter-option {{currentFilter.quarter === 'Q2' ? 'active' : ''}}" data-type="quarter" data-value="Q2" bindtap="onFilterChange">第二季度</view>
+        <view class="filter-option {{currentFilter.quarter === 'Q3' ? 'active' : ''}}" data-type="quarter" data-value="Q3" bindtap="onFilterChange">第三季度</view>
+        <view class="filter-option {{currentFilter.quarter === 'Q4' ? 'active' : ''}}" data-type="quarter" data-value="Q4" bindtap="onFilterChange">第四季度</view>
+      </view>
+    </view>
+    <view class="filter-actions">
+      <button class="btn-reset" bindtap="resetFilter">重置</button>
+      <button class="btn-confirm" bindtap="applyFilter">确定</button>
+    </view>
+  </view>
+
+  <!-- 遮罩层 -->
+  <view class="mask" wx:if="{{showFilter}}" bindtap="toggleFilter"></view>
+
+  <!-- 财务报表统计卡片 -->
+  <view class="finance-summary" wx:if="{{summary}}">
+    <view class="summary-header">
+      <text class="summary-title">财务统计</text>
+      <text class="summary-period">{{summary.period}}</text>
+    </view>
+    <view class="summary-content">
+      <view class="summary-item">
+        <view class="item-label">总收入</view>
+        <view class="item-value income">¥{{summary.totalIncome}}</view>
+      </view>
+      <view class="summary-item">
+        <view class="item-label">总支出</view>
+        <view class="item-value expense">¥{{summary.totalExpense}}</view>
+      </view>
+      <view class="summary-item">
+        <view class="item-label">结余</view>
+        <view class="item-value {{summary.balance >= 0 ? 'income' : 'expense'}}">¥{{summary.balance}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 财务报告列表 -->
+  <scroll-view 
+    class="finance-list" 
+    scroll-y="true" 
+    enable-back-to-top="true"
+    refresher-enabled="{{true}}"
+    refresher-triggered="{{refreshing}}"
+    bindrefresherrefresh="onRefresh"
+    bindscrolltolower="onLoadMore"
+  >
+    <!-- 无财务报告提示 -->
+    <view class="empty-list" wx:if="{{reports.length === 0 && !loading}}">
+      <image src="/src/assets/icons/empty.png" mode="aspectFit"></image>
+      <text>暂无财务报告</text>
+    </view>
+
+    <!-- 财务报告列表 -->
+    <block wx:if="{{reports.length > 0}}">
+      <view class="finance-item" wx:for="{{reports}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+        <view class="finance-header">
+          <view class="finance-title">{{item.title}}</view>
+          <view class="finance-type {{item.type}}">{{typeText[item.type]}}</view>
+        </view>
+        <view class="finance-content">
+          <view class="finance-info">
+            <view class="info-item">
+              <text class="info-label">发布日期：</text>
+              <text class="info-value">{{item.publish_date}}</text>
+            </view>
+            <view class="info-item">
+              <text class="info-label">报告期间：</text>
+              <text class="info-value">{{item.report_period}}</text>
+            </view>
+          </view>
+          <view class="finance-amount {{item.type === 'income' ? 'income' : item.type === 'expense' ? 'expense' : ''}}">
+            <text wx:if="{{item.type === 'income'}}">+</text>
+            <text wx:elif="{{item.type === 'expense'}}">-</text>
+            <text>¥{{item.amount}}</text>
+          </view>
+        </view>
+        <view class="finance-footer">
+          <view class="finance-category">{{item.category}}</view>
+          <view class="finance-comments" wx:if="{{item.comments_count > 0}}">
+            <image src="/src/assets/icons/comment.png" mode="aspectFit"></image>
+            <text>{{item.comments_count}}</text>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <!-- 加载状态 -->
+    <view class="loading" wx:if="{{loading}}">
+      <view class="loading-spinner"></view>
+      <text>加载中...</text>
+    </view>
+
+    <!-- 加载完成提示 -->
+    <view class="load-all" wx:if="{{reports.length > 0 && !hasMore && !loading}}">
+      <text>没有更多财务报告了</text>
+    </view>
+  </scroll-view>
+
+  <!-- 下载按钮 -->
+  <view class="download-btn" bindtap="downloadReports">
+    <image src="/src/assets/icons/download.png" mode="aspectFit"></image>
+  </view>
+</view> 

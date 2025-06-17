@@ -1,0 +1,140 @@
+<view class="topic-detail-container">
+  <!-- 返回按钮 -->
+  <view class="back-btn" bindtap="goBack">
+    <image src="/src/assets/icons/back.png" mode="aspectFit"></image>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text>正在加载议题详情...</text>
+  </view>
+
+  <!-- 议题详情 -->
+  <block wx:if="{{!loading && topic}}">
+    <!-- 议题头部信息 -->
+    <view class="topic-header">
+      <view class="topic-title">{{topic.title}}</view>
+      <view class="topic-meta">
+        <view class="topic-author">
+          <image class="avatar" src="{{topic.user_avatar || '/src/assets/icons/user.png'}}" mode="aspectFill"></image>
+          <text>{{topic.user_name}}</text>
+        </view>
+        <view class="topic-time">{{topic.created_at_formatted}}</view>
+      </view>
+      <view class="topic-status {{topic.status}}">{{statusText[topic.status]}}</view>
+    </view>
+
+    <!-- 议题内容 -->
+    <view class="topic-content">
+      <rich-text nodes="{{topic.content_html}}"></rich-text>
+    </view>
+
+    <!-- 议题附件 -->
+    <view class="topic-attachments" wx:if="{{topic.attachments && topic.attachments.length > 0}}">
+      <view class="section-title">附件</view>
+      <view class="attachment-list">
+        <view class="attachment-item" wx:for="{{topic.attachments}}" wx:key="id" bindtap="previewFile" data-url="{{item.url}}" data-type="{{item.type}}">
+          <image class="attachment-icon" src="{{getFileIcon(item.type)}}" mode="aspectFit"></image>
+          <view class="attachment-info">
+            <view class="attachment-name">{{item.name}}</view>
+            <view class="attachment-size">{{formatFileSize(item.size)}}</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 投票区域 -->
+    <view class="topic-vote" wx:if="{{topic.status === 'voting'}}">
+      <view class="section-title">投票</view>
+      <view class="vote-deadline" wx:if="{{topic.vote_deadline}}">
+        <text>截止时间: {{formatDate(topic.vote_deadline)}}</text>
+        <text class="countdown" wx:if="{{countdown}}">{{countdown}}</text>
+      </view>
+      <view class="vote-options">
+        <view 
+          class="vote-option {{userVote === option.id ? 'voted' : ''}}" 
+          wx:for="{{topic.vote_options}}" 
+          wx:for-item="option" 
+          wx:key="id"
+          bindtap="handleVote" 
+          data-id="{{option.id}}"
+        >
+          <view class="vote-option-content">
+            <view class="vote-option-text">{{option.content}}</view>
+            <view class="vote-option-count">{{option.count || 0}} 票</view>
+          </view>
+          <view class="vote-progress">
+            <view class="vote-progress-bar" style="width: {{getVotePercentage(option.count)}}%"></view>
+            <view class="vote-progress-text">{{getVotePercentage(option.count)}}%</view>
+          </view>
+        </view>
+      </view>
+      <view class="vote-total">
+        <text>总投票数: {{getTotalVotes()}}</text>
+        <text wx:if="{{userVote}}">您已投票</text>
+      </view>
+    </view>
+
+    <!-- 投票结果 -->
+    <view class="topic-vote-result" wx:elif="{{topic.status !== 'pending' && topic.vote_options}}">
+      <view class="section-title">投票结果</view>
+      <view class="vote-options">
+        <view class="vote-option" wx:for="{{topic.vote_options}}" wx:for-item="option" wx:key="id">
+          <view class="vote-option-content">
+            <view class="vote-option-text">{{option.content}}</view>
+            <view class="vote-option-count">{{option.count || 0}} 票</view>
+          </view>
+          <view class="vote-progress">
+            <view class="vote-progress-bar" style="width: {{getVotePercentage(option.count)}}%"></view>
+            <view class="vote-progress-text">{{getVotePercentage(option.count)}}%</view>
+          </view>
+        </view>
+      </view>
+      <view class="vote-total">
+        <text>总投票数: {{getTotalVotes()}}</text>
+        <text wx:if="{{userVote}}">您已投票: {{getUserVoteOption()}}</text>
+      </view>
+    </view>
+
+    <!-- 评论区域 -->
+    <view class="topic-comments">
+      <view class="section-title">评论 ({{comments.length}})</view>
+      <view class="comment-list" wx:if="{{comments.length > 0}}">
+        <view class="comment-item" wx:for="{{comments}}" wx:key="id">
+          <view class="comment-header">
+            <view class="comment-author">
+              <image class="avatar" src="{{item.user_avatar || '/src/assets/icons/user.png'}}" mode="aspectFill"></image>
+              <text>{{item.user_name}}</text>
+            </view>
+            <view class="comment-time">{{item.created_at_formatted}}</view>
+          </view>
+          <view class="comment-content">{{item.content}}</view>
+        </view>
+      </view>
+      <view class="empty-comments" wx:else>
+        <text>暂无评论，快来发表您的看法吧</text>
+      </view>
+    </view>
+
+    <!-- 评论输入框 -->
+    <view class="comment-input-container">
+      <input 
+        class="comment-input" 
+        placeholder="发表您的看法..." 
+        value="{{commentText}}" 
+        bindinput="onCommentInput"
+        confirm-type="send"
+        bindconfirm="submitComment"
+      />
+      <button class="comment-submit" bindtap="submitComment" disabled="{{!commentText}}">发送</button>
+    </view>
+  </block>
+
+  <!-- 错误提示 -->
+  <view class="error-container" wx:if="{{!loading && !topic}}">
+    <image src="/src/assets/icons/error.png" mode="aspectFit"></image>
+    <text>加载议题失败，请检查网络后重试</text>
+    <button class="btn-primary" bindtap="refreshTopic">重新加载</button>
+  </view>
+</view> 
