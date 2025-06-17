@@ -9,15 +9,14 @@ App({
     userInfo: null,
     token: '',
     currentCommunity: null,
-    // 配置API地址
+    // 配置API地址（只使用合法域名，符合微信小程序规范）
     apiUrls: [
-      'http://45.125.44.25:8080/api',  // 直接使用IP地址(可靠性更高)
-      'https://lovehome.xin/api'       // 域名地址(作为备用)
+      'https://lovehome.xin/api'  // 使用正式域名
     ],
     // 当前使用的API地址索引
     currentApiUrlIndex: 0,
     // 实际使用的地址
-    baseUrl: 'http://45.125.44.25:8080/api',
+    baseUrl: 'https://lovehome.xin/api',
     // 网络状态
     networkAvailable: true,
     networkType: 'unknown',
@@ -32,6 +31,8 @@ App({
    * 当小程序初始化完成时触发
    */
   onLaunch() {
+    console.log('App onLaunch - 小程序初始化');
+    
     // 初始化全局变量
     this.connectionRetryTimer = null;
     // 获取系统信息（使用新API替代废弃的getSystemInfoSync）
@@ -61,6 +62,7 @@ App({
     
     // 使用setTimeout延迟检查服务器连接，确保App实例已完全初始化
     setTimeout(() => {
+      console.log('正在检查服务器连接...');
       this.checkServerConnection();
       
       // 如果第一次连接失败，设置定时任务尝试重新连接
@@ -75,13 +77,15 @@ App({
           this.checkServerConnection();
         }, 15000); // 每15秒尝试重连一次
       }
-    }, 1000); // 增加延迟时间，确保应用完全初始化
+    }, 2000); // 增加延迟时间，确保应用完全初始化
   },
   
   /**
    * 检查服务器连接状态
    */
   checkServerConnection() {
+    console.log('正在检查服务器连接...');
+    
     // 导入请求工具
     const util = require('./src/utils/request.js');
     
@@ -95,29 +99,28 @@ App({
         console.error('服务器连接异常:', err);
         this.globalData.serverConnected = false;
         
-        // 尝试切换API地址
-        this.switchApiUrl();
+        // 显示错误提示
+        wx.showModal({
+          title: '连接提示',
+          content: '连接到服务器失败，请检查网络或稍后再试。',
+          showCancel: false
+        });
       }
     );
   },
   
   /**
-   * 切换API地址
+   * 切换API地址 - 已不需要，保留接口兼容性
    */
   switchApiUrl() {
-    const { apiUrls, currentApiUrlIndex } = this.globalData;
+    console.log('服务器连接失败，请检查网络或稍后再试');
     
-    // 切换到下一个API地址
-    const nextIndex = (currentApiUrlIndex + 1) % apiUrls.length;
-    this.globalData.currentApiUrlIndex = nextIndex;
-    this.globalData.baseUrl = apiUrls[nextIndex];
-    
-    console.log(`尝试切换到备用API地址: ${this.globalData.baseUrl}`);
-    
-    // 立即尝试使用新地址连接
-    setTimeout(() => {
-      this.checkServerConnection();
-    }, 500);
+    // 显示错误提示
+    wx.showModal({
+      title: '连接提示',
+      content: '连接到服务器失败，请检查网络或稍后再试。',
+      showCancel: false
+    });
   },
   
   /**

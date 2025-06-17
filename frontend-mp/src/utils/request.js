@@ -24,69 +24,32 @@ const checkServerStatus = (successCallback, failCallback) => {
       return;
     }
     
-    // 解析域名部分用于日志（使用简单字符串处理，避免URL构造函数）
-    let domain = app.globalData.baseUrl;
-    try {
-      // 小程序环境不支持URL构造函数，使用正则提取域名
-      const domainMatch = app.globalData.baseUrl.match(/^(https?:\/\/)?([^\/]+)/i);
-      if (domainMatch && domainMatch[2]) {
-        domain = domainMatch[2];
-      }
-    } catch (e) {
-      console.error('域名解析失败:', e);
-    }
-    
-    console.log(`尝试连接健康检查端点: ${app.globalData.baseUrl}/health (域名: ${domain})`);
-    
-    // 检查域名是否可访问（直接访问根路径）
-    const testDirectConnection = () => {
-      wx.request({
-        url: app.globalData.baseUrl.replace(/\/api$/, ''),
-        method: 'HEAD',
-        timeout: 3000,
-        sslVerify: false,
-        enableHttp2: true,
-        success: () => {
-          console.log(`域名 ${domain} 可访问，但API健康检查失败，可能是API服务未启动`);
-        },
-        fail: () => {
-          console.error(`域名 ${domain} 访问失败，可能是DNS解析问题或服务器离线`);
-        },
-        complete: () => {
-          // 继续使用常规的失败回调
-          typeof failCallback === 'function' && failCallback({
-            errMsg: '健康检查失败，将尝试备用地址'
-          });
-        }
-      });
-    };
+    console.log(`尝试连接健康检查端点: ${app.globalData.baseUrl}/health`);
     
     // 使用健康检查端点
     wx.request({
       url: `${app.globalData.baseUrl}/health`,
       method: 'GET',
-      timeout: 5000, // 减少超时时间，快速判断连接状态
+      timeout: 10000, // 恢复较长的超时时间，避免网络波动影响
       enableHttp2: true,
-      enableQuic: true,
       enableCache: false,
-      sslVerify: false,
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           console.log('健康检查成功:', res.data);
           typeof successCallback === 'function' && successCallback(res);
         } else {
           console.error('健康检查返回非成功状态码:', res.statusCode);
-          // 测试域名直接连接
-          testDirectConnection();
+          typeof failCallback === 'function' && failCallback({
+            errMsg: `健康检查失败: 状态码 ${res.statusCode}`
+          });
         }
       },
       fail: (err) => {
         console.error('健康检查请求失败:', err);
-        // 测试域名直接连接
-        testDirectConnection();
+        typeof failCallback === 'function' && failCallback(err);
       }
     });
-  }, 500); // 增加500ms延迟，确保应用初始化完成
+  }, 1000); // 增加延迟，确保应用初始化完成
 };
 
 /**
