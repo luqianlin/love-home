@@ -48,20 +48,38 @@ app.options('*', (req, res) => {
   res.sendStatus(204);
 });
 
+/**
+ * 检测请求是否来自微信小程序
+ * @param {Object} req - 请求对象
+ * @returns {Boolean} 是否是微信小程序请求
+ */
+const isWechatMiniProgramRequest = (req) => {
+  const userAgent = req.headers['user-agent'] || '';
+  return (
+    userAgent.includes('MicroMessenger') || 
+    userAgent.includes('miniProgram') || 
+    userAgent.includes('lovehome') ||  // 检查我们自定义的UA标识
+    (req.headers['referer'] && req.headers['referer'].includes('servicewechat.com')) ||
+    req.query.client === 'wechat_mp'  // 允许通过查询参数明确标识
+  );
+};
+
 // 微信小程序专用健康检查端点 - 优先匹配
 app.get('/health', (req, res) => {
   // 判断是否来自微信小程序的请求
-  const userAgent = req.headers['user-agent'] || '';
-  const isMiniProgram = userAgent.includes('MicroMessenger') || 
-                        userAgent.includes('miniProgram') || 
-                        req.headers['referer']?.includes('servicewechat.com');
+  const isMiniProgram = isWechatMiniProgramRequest(req);
   
   // 设置特殊头信息
   if (isMiniProgram) {
-    console.log('接收到微信小程序健康检查请求');
+    console.log('接收到微信小程序健康检查请求', {
+      userAgent: req.headers['user-agent'],
+      ip: req.ip,
+      time: new Date().toISOString()
+    });
+    
     // 设置微信小程序特殊需求的头信息
     res.header('Connection', 'keep-alive');
-    res.header('Keep-Alive', 'timeout=60');
+    res.header('Keep-Alive', 'timeout=300'); // 延长keep-alive超时
   }
   
   // 设置不缓存的头信息
@@ -96,6 +114,22 @@ app.get('/health', (req, res) => {
 
 // 健康检查端点 - 直接在根级别添加，确保优先匹配
 app.get('/api/health', (req, res) => {
+  // 判断是否来自微信小程序的请求
+  const isMiniProgram = isWechatMiniProgramRequest(req);
+  
+  // 设置特殊头信息
+  if (isMiniProgram) {
+    console.log('接收到微信小程序API健康检查请求', {
+      userAgent: req.headers['user-agent'],
+      ip: req.ip,
+      time: new Date().toISOString()
+    });
+    
+    // 设置微信小程序特殊需求的头信息
+    res.header('Connection', 'keep-alive');
+    res.header('Keep-Alive', 'timeout=300');
+  }
+  
   // 设置不缓存的头信息
   res.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.header('Pragma', 'no-cache');
@@ -113,7 +147,8 @@ app.get('/api/health', (req, res) => {
     message: '服务正常运行',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    clientInfo: isMiniProgram ? 'wechat_mini_program' : 'web_client'
   });
 });
 

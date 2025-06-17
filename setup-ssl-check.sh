@@ -1,187 +1,161 @@
 #!/bin/bash
 
-# 智慧社区平台SSL证书检查与修复脚本
-# 用于解决微信小程序连接问题(ERR_CONNECTION_CLOSED)
+# SSL证书检查与修复脚本
+# 用于检查SSL证书配置并修复微信小程序连接问题
 
-# 颜色定义
-GREEN='\033[0;32m'
+# 颜色配置
 RED='\033[0;31m'
-YELLOW='\033[0;33m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # 无颜色
+NC='\033[0m' # No Color
 
+# 域名和证书配置
 DOMAIN="lovehome.xin"
-SSL_DIR="/var/www/love-home/18979882_lovehome.xin_nginx"
-NGINX_CONF="/etc/nginx/sites-enabled/lovehome.xin.conf"
+CERT_DIR="/var/www/love-home/18979882_lovehome.xin_nginx"
+CERT_FILE="${CERT_DIR}/${DOMAIN}.pem"
+KEY_FILE="${CERT_DIR}/${DOMAIN}.key"
+CHAIN_FILE="${CERT_DIR}/fullchain.pem"
 
-echo -e "${BLUE}===============================================${NC}"
-echo -e "${BLUE}   智慧社区平台SSL证书检查与修复工具       ${NC}"
-echo -e "${BLUE}===============================================${NC}"
-echo
+echo -e "${BLUE}===== SSL证书检查与修复工具 =====${NC}"
 
-# 检查SSL证书
-echo -e "${BLUE}[检查] SSL证书${NC}"
-if [ ! -f "${SSL_DIR}/${DOMAIN}.pem" ] || [ ! -f "${SSL_DIR}/${DOMAIN}.key" ]; then
-  echo -e "${RED}错误: SSL证书文件不存在${NC}"
-  echo -e "预期路径: ${SSL_DIR}/${DOMAIN}.pem 和 ${DOMAIN}.key"
-  echo -e "请确保SSL证书文件存在"
+# 1. 检查证书文件是否存在
+echo -e "${YELLOW}[1/5] 检查证书文件...${NC}"
+if [ -f "$CERT_FILE" ] && [ -f "$KEY_FILE" ]; then
+  echo -e "${GREEN}✓ 证书文件存在${NC}"
+else
+  echo -e "${RED}✗ 证书文件不存在${NC}"
+  echo "  证书文件: $CERT_FILE"
+  echo "  密钥文件: $KEY_FILE"
+  echo "请确保证书文件存在再继续"
   exit 1
+fi
+
+# 2. 检查证书有效期
+echo -e "\n${YELLOW}[2/5] 检查证书有效期...${NC}"
+CERT_DATES=$(openssl x509 -in "$CERT_FILE" -text -noout | grep -A 2 "Validity")
+echo "$CERT_DATES"
+
+# 提取过期时间
+EXPIRY_DATE=$(echo "$CERT_DATES" | grep "Not After" | cut -d':' -f2- | xargs)
+EXPIRY_TIMESTAMP=$(date -d "$EXPIRY_DATE" +%s)
+CURRENT_TIMESTAMP=$(date +%s)
+DAYS_LEFT=$(( ($EXPIRY_TIMESTAMP - $CURRENT_TIMESTAMP) / 86400 ))
+
+if [ $DAYS_LEFT -lt 0 ]; then
+  echo -e "${RED}✗ 证书已过期 ($DAYS_LEFT 天)${NC}"
+  echo "请更新证书后再继续"
+  exit 1
+elif [ $DAYS_LEFT -lt 30 ]; then
+  echo -e "${YELLOW}! 证书即将过期 (剩余 $DAYS_LEFT 天)${NC}"
+  echo "建议尽快更新证书"
 else
-  echo -e "${GREEN}✓ SSL证书文件存在${NC}"
+  echo -e "${GREEN}✓ 证书有效期正常 (剩余 $DAYS_LEFT 天)${NC}"
+fi
+
+# 3. 验证证书链完整性
+echo -e "\n${YELLOW}[3/5] 检查证书链完整性...${NC}"
+CHAIN_CHECK=$(openssl verify -untrusted "$CERT_FILE" "$CERT_FILE" 2>&1)
+
+if echo "$CHAIN_CHECK" | grep -q "OK"; then
+  echo -e "${GREEN}✓ 证书链完整性验证通过${NC}"
+else
+  echo -e "${YELLOW}! 证书链可能不完整: ${CHAIN_CHECK}${NC}"
+  echo "尝试提取完整证书链..."
   
-  # 检查证书有效期
-  CERT_INFO=$(openssl x509 -in ${SSL_DIR}/${DOMAIN}.pem -text -noout)
-  START_DATE=$(echo "$CERT_INFO" | grep "Not Before" | cut -d: -f2-)
-  END_DATE=$(echo "$CERT_INFO" | grep "Not After" | cut -d: -f2-)
-  echo -e "证书有效期: ${YELLOW}$START_DATE${NC} 至 ${YELLOW}$END_DATE${NC}"
-  
-  # 检查证书是否过期
-  EXPIRE_DATE=$(date -d "$(echo "$END_DATE" | sed -e 's/^[[:space:]]*//')" +%s)
-  CURRENT_DATE=$(date +%s)
-  DAYS_LEFT=$(( ($EXPIRE_DATE - $CURRENT_DATE) / 86400 ))
-  
-  if [ $DAYS_LEFT -lt 0 ]; then
-    echo -e "${RED}✗ 证书已过期!${NC}"
-    CERT_VALID=false
-  elif [ $DAYS_LEFT -lt 30 ]; then
-    echo -e "${YELLOW}! 证书即将过期（剩余 $DAYS_LEFT 天）${NC}"
-    CERT_VALID=true
+  # 如果存在完整链文件，尝试使用
+  if [ -f "$CHAIN_FILE" ]; then
+    echo "发现完整链文件: $CHAIN_FILE"
+    echo "验证完整链文件..."
+    FULL_CHAIN_CHECK=$(openssl verify -untrusted "$CHAIN_FILE" "$CERT_FILE" 2>&1)
+    
+    if echo "$FULL_CHAIN_CHECK" | grep -q "OK"; then
+      echo -e "${GREEN}✓ 完整链验证通过，将使用完整链文件${NC}"
+      cp "$CHAIN_FILE" "$CERT_FILE"
+      echo "已更新证书文件"
+    else
+      echo -e "${RED}✗ 完整链验证失败: ${FULL_CHAIN_CHECK}${NC}"
+      echo "需要手动修复证书链"
+    fi
   else
-    echo -e "${GREEN}✓ 证书有效（剩余 $DAYS_LEFT 天）${NC}"
-    CERT_VALID=true
+    echo -e "${YELLOW}未找到完整链文件，可能需要手动构建完整证书链${NC}"
+    echo "请从证书颁发机构获取完整证书链"
   fi
 fi
 
-# 检查证书链完整性
-echo -e "\n${BLUE}[检查] 证书链完整性${NC}"
-CERT_CHAIN=$(openssl s_client -showcerts -connect ${DOMAIN}:443 -servername ${DOMAIN} 2>/dev/null </dev/null | grep -A 1 "Certificate chain")
+# 4. 检查加密套件和协议
+echo -e "\n${YELLOW}[4/5] 检查支持的TLS版本和加密套件...${NC}"
 
-if echo "$CERT_CHAIN" | grep -q "i:"; then
-  echo -e "${GREEN}✓ 证书链包含中间证书${NC}"
-  echo "$CERT_CHAIN"
-  CHAIN_COMPLETE=true
+# 检查TLSv1.2
+echo "测试TLSv1.2支持..."
+TLS12_CHECK=$(echo | openssl s_client -connect ${DOMAIN}:443 -tls1_2 -servername ${DOMAIN} 2>/dev/null | grep "Protocol")
+if [ -n "$TLS12_CHECK" ]; then
+  echo -e "${GREEN}✓ 支持 $TLS12_CHECK${NC}"
 else
-  echo -e "${RED}✗ 证书链可能不完整（未找到中间证书）${NC}"
-  echo "$CERT_CHAIN"
-  CHAIN_COMPLETE=false
+  echo -e "${RED}✗ 不支持 TLSv1.2${NC}"
 fi
 
-# 检查Nginx SSL配置
-echo -e "\n${BLUE}[检查] Nginx SSL配置${NC}"
-
-# 检查Nginx配置是否引用了正确的证书文件
-if grep -q "${SSL_DIR}/${DOMAIN}.pem" "$NGINX_CONF" && grep -q "${SSL_DIR}/${DOMAIN}.key" "$NGINX_CONF"; then
-  echo -e "${GREEN}✓ Nginx配置中包含正确的证书文件路径${NC}"
-  CONFIG_CORRECT=true
+# 检查TLSv1.3
+echo "测试TLSv1.3支持..."
+TLS13_CHECK=$(echo | openssl s_client -connect ${DOMAIN}:443 -tls1_3 -servername ${DOMAIN} 2>/dev/null | grep "Protocol")
+if [ -n "$TLS13_CHECK" ]; then
+  echo -e "${GREEN}✓ 支持 $TLS13_CHECK${NC}"
 else
-  echo -e "${RED}✗ Nginx配置中可能使用了错误的证书文件路径${NC}"
-  echo -e "请检查Nginx配置文件: $NGINX_CONF"
-  CONFIG_CORRECT=false
+  echo -e "${RED}✗ 不支持 TLSv1.3${NC}"
 fi
 
-# 检查SSL协议和密码套件配置
-if grep -q "ssl_protocols TLSv1.2 TLSv1.3" "$NGINX_CONF"; then
-  echo -e "${GREEN}✓ SSL协议配置正确（TLSv1.2 TLSv1.3）${NC}"
-  PROTOCOLS_OK=true
-else
-  echo -e "${YELLOW}! SSL协议配置可能不正确${NC}"
-  echo -e "建议配置: ssl_protocols TLSv1.2 TLSv1.3;"
-  PROTOCOLS_OK=false
-fi
+# 检查是否支持微信小程序常用的加密套件
+echo -e "\n测试关键加密套件支持..."
+CIPHER_SUITES=(
+  "ECDHE-RSA-AES128-GCM-SHA256"
+  "ECDHE-ECDSA-AES128-GCM-SHA256"
+  "ECDHE-RSA-AES256-GCM-SHA384"
+)
 
-# 检查OCSP装订配置
-if grep -q "ssl_stapling on" "$NGINX_CONF" && grep -q "ssl_stapling_verify on" "$NGINX_CONF"; then
-  echo -e "${GREEN}✓ 已配置OCSP装订${NC}"
-  STAPLING_OK=true
-else
-  echo -e "${YELLOW}! 未配置OCSP装订${NC}"
-  echo -e "建议添加: ssl_stapling on; ssl_stapling_verify on;"
-  STAPLING_OK=false
-fi
-
-# 检查会话缓存和票证
-if grep -q "ssl_session_tickets on" "$NGINX_CONF"; then
-  echo -e "${GREEN}✓ 已配置会话票证${NC}"
-  SESSION_OK=true
-else
-  echo -e "${YELLOW}! 未配置会话票证${NC}"
-  echo -e "建议添加: ssl_session_tickets on;"
-  SESSION_OK=false
-fi
-
-# 诊断总结
-echo -e "\n${BLUE}[诊断] 总结${NC}"
-if [ "$CERT_VALID" = true ] && [ "$CHAIN_COMPLETE" = true ] && [ "$CONFIG_CORRECT" = true ]; then
-  echo -e "${GREEN}✓ SSL证书配置基本正常${NC}"
-  
-  if [ "$PROTOCOLS_OK" = false ] || [ "$STAPLING_OK" = false ] || [ "$SESSION_OK" = false ]; then
-    echo -e "${YELLOW}! 但仍有优化空间:${NC}"
-    
-    if [ "$PROTOCOLS_OK" = false ]; then
-      echo -e "  - 更新SSL协议版本"
-    fi
-    
-    if [ "$STAPLING_OK" = false ]; then
-      echo -e "  - 启用OCSP装订"
-    fi
-    
-    if [ "$SESSION_OK" = false ]; then
-      echo -e "  - 启用会话票证"
-    fi
+for cipher in "${CIPHER_SUITES[@]}"; do
+  echo "测试加密套件: $cipher"
+  CIPHER_CHECK=$(echo | openssl s_client -connect ${DOMAIN}:443 -cipher $cipher -servername ${DOMAIN} 2>/dev/null | grep "New, ")
+  if [ -n "$CIPHER_CHECK" ]; then
+    echo -e "${GREEN}✓ 支持 $cipher${NC}"
+  else
+    echo -e "${RED}✗ 不支持 $cipher${NC}"
+    MISSING_CIPHERS=1
   fi
-else
-  echo -e "${RED}✗ SSL证书配置存在问题:${NC}"
-  
-  if [ "$CERT_VALID" = false ]; then
-    echo -e "  - 证书已过期或无效"
-  fi
-  
-  if [ "$CHAIN_COMPLETE" = false ]; then
-    echo -e "  - 证书链不完整"
-  fi
-  
-  if [ "$CONFIG_CORRECT" = false ]; then
-    echo -e "  - Nginx配置引用了错误的证书路径"
-  fi
+done
+
+# 5. 提出可能的修复建议
+echo -e "\n${YELLOW}[5/5] 总结与修复建议...${NC}"
+
+echo "SSL证书检查结果:"
+echo "- 证书文件: $([ -f "$CERT_FILE" ] && echo "存在" || echo "不存在")"
+echo "- 密钥文件: $([ -f "$KEY_FILE" ] && echo "存在" || echo "不存在")"
+echo "- 证书有效期: 剩余 $DAYS_LEFT 天"
+echo "- 证书链完整性: $(echo "$CHAIN_CHECK" | grep -q "OK" && echo "通过" || echo "未通过")"
+
+echo -e "\n针对微信小程序连接问题(ERR_CONNECTION_CLOSED)的建议:"
+
+if [ $DAYS_LEFT -lt 0 ]; then
+  echo "1. 【关键】更新SSL证书，当前证书已过期"
+elif [ $DAYS_LEFT -lt 30 ]; then
+  echo "1. 【建议】尽快更新SSL证书，证书即将过期"
 fi
 
-echo -e "\n${BLUE}[建议] 解决方案${NC}"
-if [ "$CERT_VALID" = false ]; then
-  echo -e "1. 证书续签:"
-  echo -e "   如果使用Let's Encrypt: ${YELLOW}certbot renew --force-renewal${NC}"
-  echo -e "   或手动更新证书文件: ${SSL_DIR}/${DOMAIN}.pem 和 ${DOMAIN}.key"
+if ! echo "$CHAIN_CHECK" | grep -q "OK"; then
+  echo "2. 【关键】修复证书链不完整问题:"
+  echo "   - 从证书颁发机构获取完整证书链"
+  echo "   - 确保证书包含所有中间证书"
 fi
 
-if [ "$CHAIN_COMPLETE" = false ]; then
-  echo -e "2. 修复证书链:"
-  echo -e "   确保证书文件包含完整证书链，可以通过以下命令合并:"
-  echo -e "   ${YELLOW}cat domain.crt intermediate.crt > ${SSL_DIR}/${DOMAIN}.pem${NC}"
+if [ -n "$MISSING_CIPHERS" ]; then
+  echo "3. 【关键】在Nginx配置中添加微信小程序所需的加密套件:"
+  echo "   ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305';"
+  echo "   ssl_prefer_server_ciphers off;"
 fi
 
-if [ "$CONFIG_CORRECT" = false ] || [ "$PROTOCOLS_OK" = false ] || [ "$STAPLING_OK" = false ] || [ "$SESSION_OK" = false ]; then
-  echo -e "3. 优化Nginx SSL配置:"
-  echo -e "   编辑配置文件: ${YELLOW}nano $NGINX_CONF${NC}"
-  echo -e "   添加或修改以下配置:"
-  echo -e "   ```"
-  echo -e "   ssl_certificate ${SSL_DIR}/${DOMAIN}.pem;"
-  echo -e "   ssl_certificate_key ${SSL_DIR}/${DOMAIN}.key;"
-  echo -e "   ssl_protocols TLSv1.2 TLSv1.3;"
-  echo -e "   ssl_prefer_server_ciphers on;"
-  echo -e "   ssl_ciphers 'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384';"
-  echo -e "   ssl_session_timeout 1d;"
-  echo -e "   ssl_session_cache shared:SSL:10m;"
-  echo -e "   ssl_session_tickets on;"
-  echo -e "   ssl_stapling on;"
-  echo -e "   ssl_stapling_verify on;"
-  echo -e "   resolver 8.8.8.8 8.8.4.4 valid=300s;"
-  echo -e "   resolver_timeout 5s;"
-  echo -e "   ```"
-fi
+echo "4. 【优化】Nginx SSL优化建议:"
+echo "   - 使用HTTP/2: listen 443 ssl http2;"
+echo "   - 增加保持连接超时: keepalive_timeout 300;"
+echo "   - 增加SSL会话缓存: ssl_session_cache shared:SSL:20m;"
+echo "   - 延长会话超时: ssl_session_timeout 4h;"
 
-# 提供重启命令
-echo -e "\n${BLUE}[执行] 应用修复${NC}"
-echo -e "完成上述修改后，需要重新加载Nginx:"
-echo -e "${YELLOW}systemctl reload nginx${NC}"
-
-echo -e "\n${BLUE}===============================================${NC}"
-echo 
+echo -e "\n${BLUE}===== SSL证书检查完成 =====${NC}" 

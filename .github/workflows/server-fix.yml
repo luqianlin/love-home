@@ -1,0 +1,185 @@
+name: 服务器诊断与自动修复
+
+on:
+  workflow_dispatch:  # 手动触发
+  schedule:
+    - cron: '0 */6 * * *'  # 每6小时执行一次
+
+jobs:
+  server-health-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 配置SSH密钥
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+    
+    - name: 服务器连通性测试
+      id: connectivity
+      run: |
+        echo "====== 服务器连通性测试 ======"
+        if ping -c 4 45.125.44.25 &> /dev/null; then
+          echo "✅ 服务器IP 45.125.44.25 可达"
+          echo "server_reachable=true" >> $GITHUB_OUTPUT
+        else
+          echo "❌ 服务器IP 45.125.44.25 不可达"
+          echo "server_reachable=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: HTTPS连通性测试
+      id: https_test
+      if: steps.connectivity.outputs.server_reachable == 'true'
+      run: |
+        echo "====== HTTPS连通性测试 ======"
+        # 尝试连接健康检查端点
+        if curl -s -o /dev/null -w "%{http_code}" https://lovehome.xin/health -k --connect-timeout 10 | grep -q "200"; then
+          echo "✅ HTTPS健康检查端点正常"
+          echo "https_health=ok" >> $GITHUB_OUTPUT
+        else
+          echo "❌ HTTPS健康检查端点异常"
+          echo "https_health=fail" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: 服务器状态检查
+      if: steps.connectivity.outputs.server_reachable == 'true'
+      id: server_status
+      run: |
+        echo "====== 服务器状态检查 ======"
+        ssh -o StrictHostKeyChecking=no root@45.125.44.25 '
+          echo "## 系统负载"
+          uptime
+          
+          echo -e "\n## 内存使用"
+          free -h
+          
+          echo -e "\n## 磁盘使用"
+          df -h
+          
+          echo -e "\n## 进程状态"
+          if command -v pm2 &> /dev/null; then
+            pm2 status
+          fi
+          
+          echo -e "\n## Nginx状态"
+          if systemctl is-active nginx &> /dev/null; then
+            echo "Nginx运行中"
+            echo "nginx_status=running" >> $GITHUB_ENV
+          else
+            echo "Nginx未运行"
+            echo "nginx_status=stopped" >> $GITHUB_ENV
+          fi
+          
+          echo -e "\n## SSL证书状态"
+          if [ -f "/var/www/love-home/18979882_lovehome.xin_nginx/lovehome.xin.pem" ]; then
+            echo "证书信息:"
+            openssl x509 -in /var/www/love-home/18979882_lovehome.xin_nginx/lovehome.xin.pem -text -noout | grep -A 2 "Validity"
+          else
+            echo "找不到SSL证书文件"
+          fi
+        '
+    
+    - name: 修复Nginx服务
+      if: env.nginx_status == 'stopped'
+      run: |
+        echo "====== 尝试修复Nginx服务 ======"
+        ssh -o StrictHostKeyChecking=no root@45.125.44.25 '
+          echo "检查Nginx配置:"
+          nginx -t
+          
+          if [ $? -eq 0 ]; then
+            echo "配置检查通过，尝试重启Nginx..."
+            systemctl restart nginx
+            
+            if systemctl is-active nginx &> /dev/null; then
+              echo "✅ Nginx成功重启"
+            else
+              echo "❌ Nginx重启失败"
+            fi
+          else
+            echo "❌ Nginx配置有误，不能重启"
+          fi
+        '
+    
+    - name: 修复Node.js服务
+      if: steps.https_test.outputs.https_health == 'fail' && steps.connectivity.outputs.server_reachable == 'true'
+      run: |
+        echo "====== 尝试修复Node.js服务 ======"
+        ssh -o StrictHostKeyChecking=no root@45.125.44.25 '
+          cd /var/www/love-home
+          
+          echo "检查Node.js进程:"
+          if command -v pm2 &> /dev/null; then
+            pm2 status
+            
+            echo "尝试重启Node.js服务..."
+            pm2 reload server || pm2 restart server
+            
+            echo "服务已重启，等待10秒后检查状态..."
+            sleep 10
+            
+            pm2 status
+          else
+            echo "❌ PM2未安装，无法管理Node.js服务"
+          fi
+        '
+    
+    - name: 微信小程序连接测试
+      if: steps.connectivity.outputs.server_reachable == 'true'
+      run: |
+        echo "====== 微信小程序连接测试 ======"
+        # 生成测试脚本
+        cat > test-conn.js <<EOL
+        const https = require('https');
+        
+        // 模拟微信小程序UA
+        const options = {
+          hostname: 'lovehome.xin',
+          port: 443,
+          path: '/health',
+          method: 'GET',
+          headers: {
+            'User-Agent': 'MicroMessenger/miniProgram lovehome/1.0',
+            'Referer': 'https://servicewechat.com/',
+          },
+          rejectUnauthorized: false,
+          timeout: 10000
+        };
+        
+        console.log('测试微信小程序连接...');
+        
+        const req = https.request(options, (res) => {
+          console.log(`状态码: ${res.statusCode}`);
+          console.log(`响应头: ${JSON.stringify(res.headers)}`);
+          
+          let data = '';
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+          
+          res.on('end', () => {
+            console.log(`响应数据: ${data}`);
+            process.exit(0);
+          });
+        });
+        
+        req.on('error', (e) => {
+          console.error(`请求错误: ${e.message}`);
+          process.exit(1);
+        });
+        
+        req.end();
+        EOL
+        
+        # 上传并运行测试脚本
+        scp -o StrictHostKeyChecking=no test-conn.js root@45.125.44.25:/var/www/love-home/
+        ssh -o StrictHostKeyChecking=no root@45.125.44.25 'cd /var/www/love-home && node test-conn.js'
+    
+    - name: 发送通知
+      if: failure() || (steps.https_test.outputs.https_health == 'fail' && steps.connectivity.outputs.server_reachable == 'true')
+      run: |
+        echo "服务器诊断与自动修复检测到问题。请检查GitHub Actions运行日志以获取详细信息。"
+        # 这里可以添加发送通知的逻辑，如发送邮件、短信等 

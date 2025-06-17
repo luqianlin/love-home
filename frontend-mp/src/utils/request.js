@@ -63,7 +63,8 @@ const checkServerStatus = (successCallback, failCallback) => {
         enableHttpDNS: false, // 禁用HTTP DNS
         header: {
           'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive'
+          'Connection': 'keep-alive',
+          'user-agent': 'MicroMessenger/miniProgram lovehome/1.0' // 添加明确的微信小程序标识
         },
         success: (res) => {
           if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -127,7 +128,9 @@ const checkServerStatus = (successCallback, failCallback) => {
         retryCount = 0;
         currentEndpointIndex++;
         console.log(`切换到下一个健康检查端点: ${currentEndpointIndex < healthEndpoints.length ? healthEndpoints[currentEndpointIndex] : '无更多端点'}`);
-        setTimeout(tryNextEndpoint, 1000);
+        
+        // CONNECTION_CLOSED错误特殊处理：在尝试下一个端点前增加延迟
+        setTimeout(tryNextEndpoint, 3000); // 延长切换端点间隔到3秒
       }
     };
     
