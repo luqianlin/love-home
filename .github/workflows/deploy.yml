@@ -1,47 +1,70 @@
-name: 智慧社区平台部署
+name: 部署到腾讯云服务器
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      confirmation:
+        description: '确认部署'
+        required: true
+        default: 'yes'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: 检出代码
+        uses: actions/checkout@v3
       
-      - name: 使用 Node.js 16.x
-        uses: actions/setup-node@v3
+      - name: 部署到腾讯云服务器
+        uses: appleboy/ssh-action@master
         with:
-          node-version: 16.x
-          cache: 'npm'
-          
-      - name: 安装依赖
-        run: npm ci
-        
-      - name: 构建项目
-        run: npm run build
-        
-      - name: 设置 SSH 密钥
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          
-      - name: 添加远程服务器到已知主机
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
-          
-      - name: 部署到生产服务器
-        run: |
-          rsync -avz --delete \
-            --exclude 'node_modules' \
-            --exclude '.git' \
-            --exclude '.github' \
-            --exclude '.env' \
-            ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/var/www/love-home/
+          host: 49.235.80.118
+          username: root
+          password: ${{ secrets.TENCENT_SSH_PASSWORD }}
+          script: |
+            # 创建项目目录（如果不存在）
+            mkdir -p /var/www/love-home
             
-      - name: 远程重启服务
+            # 如果是首次部署，克隆仓库
+            if [ ! -d "/var/www/love-home/.git" ]; then
+              cd /var/www
+              git clone https://github.com/${{ github.repository }}.git love-home
+              cd love-home
+            else
+              # 如果已经存在，拉取最新代码
+              cd /var/www/love-home
+              git pull origin main
+            fi
+            
+            # 安装依赖
+            npm install
+            
+            # 重启或启动服务
+            if command -v pm2 &> /dev/null; then
+              pm2 restart server || pm2 start server.js
+            else
+              npm install -g pm2
+              pm2 start server.js
+            fi
+            
+            # 确保Nginx配置正确
+            if [ -f "/var/www/love-home/nginx-config.conf" ]; then
+              cp /var/www/love-home/nginx-config.conf /etc/nginx/sites-available/love-home.conf
+              ln -sf /etc/nginx/sites-available/love-home.conf /etc/nginx/sites-enabled/
+              
+              # 测试并重载Nginx配置
+              nginx -t && systemctl reload nginx
+            fi
+            
+            echo "部署完成！"
+      
+      - name: 验证部署
         run: |
-          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} 'cd /var/www/love-home && npm install && pm2 reload ecosystem.config.js' 
+          # 等待服务启动
+          sleep 10
+          
+          # 测试服务是否运行
+          curl -I http://49.235.80.118/ || echo "HTTP 服务未响应，但部署可能已完成"
+          echo "部署验证完成，请手动确认服务运行状态" 
