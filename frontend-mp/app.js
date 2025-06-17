@@ -11,7 +11,8 @@ App({
     currentCommunity: null,
     // 配置API地址
     apiUrls: [
-      'https://lovehome.xin/api'  // 主域名
+      'https://lovehome.xin/api',  // 主域名
+      'http://45.125.44.25:8080/api'  // 备用IP地址(直接指定端口)
     ],
     // 当前使用的API地址索引
     currentApiUrlIndex: 0,
@@ -74,7 +75,7 @@ App({
           this.checkServerConnection();
         }, 15000); // 每15秒尝试重连一次
       }
-    }, 500); // 增加延迟时间，确保应用完全初始化
+    }, 1000); // 增加延迟时间，确保应用完全初始化
   },
   
   /**
@@ -96,17 +97,6 @@ App({
         
         // 尝试切换API地址
         this.switchApiUrl();
-        
-        // 如果不是因为应用未初始化的错误，且所有API地址都尝试失败，才显示提示
-        if ((!err.errMsg || !err.errMsg.includes('应用实例未初始化')) && 
-            this.globalData.currentApiUrlIndex === 0) {
-          // 显示错误提示（只在第一次失败或所有地址都失败时显示）
-        wx.showModal({
-          title: '连接提示',
-            content: '连接到服务器失败，请检查网络或稍后再试。',
-          showCancel: false
-        });
-      }
       }
     );
   },
@@ -115,15 +105,19 @@ App({
    * 切换API地址
    */
   switchApiUrl() {
-    // 由于只使用lovehome.xin，此方法不再需要切换API地址
-    console.log('服务器连接失败，请检查网络或稍后再试');
+    const { apiUrls, currentApiUrlIndex } = this.globalData;
     
-    // 显示错误提示
-    wx.showModal({
-      title: '连接提示',
-      content: '连接到服务器失败，请检查网络或稍后再试。',
-      showCancel: false
-    });
+    // 切换到下一个API地址
+    const nextIndex = (currentApiUrlIndex + 1) % apiUrls.length;
+    this.globalData.currentApiUrlIndex = nextIndex;
+    this.globalData.baseUrl = apiUrls[nextIndex];
+    
+    console.log(`尝试切换到备用API地址: ${this.globalData.baseUrl}`);
+    
+    // 立即尝试使用新地址连接
+    setTimeout(() => {
+      this.checkServerConnection();
+    }, 500);
   },
   
   /**

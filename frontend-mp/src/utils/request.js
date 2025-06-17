@@ -24,26 +24,63 @@ const checkServerStatus = (successCallback, failCallback) => {
       return;
     }
     
+    // 解析域名部分用于日志
+    let domain = app.globalData.baseUrl;
+    try {
+      const urlObj = new URL(app.globalData.baseUrl);
+      domain = urlObj.hostname;
+    } catch (e) {
+      console.error('URL解析失败:', e);
+    }
+    
+    console.log(`尝试连接健康检查端点: ${app.globalData.baseUrl}/health (域名: ${domain})`);
+    
+    // 检查域名是否可访问（直接访问根路径）
+    const testDirectConnection = () => {
+      wx.request({
+        url: app.globalData.baseUrl.replace(/\/api$/, ''),
+        method: 'HEAD',
+        timeout: 3000,
+        sslVerify: false,
+        enableHttp2: true,
+        success: () => {
+          console.log(`域名 ${domain} 可访问，但API健康检查失败，可能是API服务未启动`);
+        },
+        fail: () => {
+          console.error(`域名 ${domain} 访问失败，可能是DNS解析问题或服务器离线`);
+        },
+        complete: () => {
+          // 继续使用常规的失败回调
+          typeof failCallback === 'function' && failCallback({
+            errMsg: '健康检查失败，将尝试备用地址'
+          });
+        }
+      });
+    };
+    
     // 使用健康检查端点
     wx.request({
       url: `${app.globalData.baseUrl}/health`,
       method: 'GET',
-      timeout: 10000, // 10秒超时
-      enableHttp2: true, // 启用HTTP/2
-      enableQuic: true, // 启用QUIC
-      enableCache: false, // 禁用缓存确保实时响应
-      // 禁用证书验证，解决自签名证书问题
+      timeout: 5000, // 减少超时时间，快速判断连接状态
+      enableHttp2: true,
+      enableQuic: true,
+      enableCache: false,
       sslVerify: false,
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
+          console.log('健康检查成功:', res.data);
           typeof successCallback === 'function' && successCallback(res);
         } else {
-          typeof failCallback === 'function' && failCallback(res);
+          console.error('健康检查返回非成功状态码:', res.statusCode);
+          // 测试域名直接连接
+          testDirectConnection();
         }
       },
       fail: (err) => {
         console.error('健康检查请求失败:', err);
-        typeof failCallback === 'function' && failCallback(err);
+        // 测试域名直接连接
+        testDirectConnection();
       }
     });
   }, 500); // 增加500ms延迟，确保应用初始化完成
