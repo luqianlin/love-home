@@ -1,0 +1,136 @@
+name: 服务器连接问题修复
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: '确认执行修复'
+        required: true
+        default: 'yes'
+
+jobs:
+  diagnose-and-fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+      
+      - name: 安装SSH密钥
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      
+      - name: 诊断服务器状态
+        run: |
+          ssh -o StrictHostKeyChecking=no root@45.125.44.25 '
+            echo "===== 服务器状态检查 ====="
+            echo "## 系统信息"
+            uname -a
+            echo
+            
+            echo "## 检查Nginx状态"
+            if systemctl is-active nginx; then
+              echo "✅ Nginx 正在运行"
+            else
+              echo "❌ Nginx 未运行"
+              echo "尝试启动 Nginx..."
+              systemctl start nginx
+              if systemctl is-active nginx; then
+                echo "✅ Nginx 已成功启动"
+              else
+                echo "❌ Nginx 启动失败，查看错误日志"
+                journalctl -u nginx --no-pager -n 20
+              fi
+            fi
+            echo
+            
+            echo "## 检查Node.js服务状态"
+            if pm2 list | grep server; then
+              echo "✅ Node.js 服务正在运行"
+            else
+              echo "❌ Node.js 服务未运行"
+              echo "尝试启动 Node.js 服务..."
+              cd /var/www/love-home && pm2 start server.js
+              if pm2 list | grep server; then
+                echo "✅ Node.js 服务已成功启动"
+              else
+                echo "❌ Node.js 服务启动失败"
+              fi
+            fi
+            echo
+            
+            echo "## 检查防火墙状态"
+            if which ufw > /dev/null; then
+              echo "UFW防火墙状态:"
+              ufw status
+              echo "确保443端口开放..."
+              ufw allow 443/tcp
+            fi
+            
+            if which firewalld > /dev/null; then
+              echo "Firewalld防火墙状态:"
+              firewall-cmd --list-all
+              echo "确保443端口开放..."
+              firewall-cmd --permanent --add-port=443/tcp
+              firewall-cmd --reload
+            fi
+            echo
+            
+            echo "## 检查SSL证书"
+            if [ -f /var/www/love-home/18979882_lovehome.xin_nginx/lovehome.xin.pem ]; then
+              echo "✅ SSL证书文件存在"
+              openssl x509 -in /var/www/love-home/18979882_lovehome.xin_nginx/lovehome.xin.pem -text -noout | grep "Not After"
+            else
+              echo "❌ SSL证书文件不存在"
+            fi
+            echo
+            
+            echo "## 测试健康检查端点"
+            curl -v http://localhost:8080/health
+            echo
+          '
+      
+      - name: 应用修复
+        run: |
+          ssh -o StrictHostKeyChecking=no root@45.125.44.25 '
+            echo "===== 应用修复 ====="
+            
+            echo "## 1. 拉取最新代码"
+            cd /var/www/love-home
+            git pull origin main
+            
+            echo "## 2. 重启Node.js服务"
+            pm2 restart server || pm2 start server.js
+            
+            echo "## 3. 检查Nginx配置"
+            nginx -t
+            
+            echo "## 4. 重载Nginx配置"
+            systemctl reload nginx
+            
+            echo "## 5. 验证修复"
+            echo "等待服务启动..."
+            sleep 5
+            curl -v http://localhost:8080/health
+            
+            echo "## 6. 检查连接问题"
+            node test-wechat-conn.js || echo "测试脚本执行失败，请手动验证"
+          '
+      
+      - name: 验证修复结果
+        run: |
+          ssh -o StrictHostKeyChecking=no root@45.125.44.25 '
+            echo "===== 验证修复结果 ====="
+            
+            echo "## 服务状态"
+            systemctl status nginx --no-pager
+            pm2 list
+            
+            echo "## 连接测试"
+            curl -v http://localhost:8080/health
+            curl -v -k https://lovehome.xin/health || echo "HTTPS连接仍有问题，可能需要额外检查"
+            
+            echo "## 日志检查"
+            tail -n 20 /var/log/nginx/error.log || echo "无法读取Nginx错误日志"
+            pm2 logs server --lines 20 --nostream || echo "无法读取Node.js服务日志"
+          ' 
