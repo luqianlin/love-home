@@ -11,13 +11,13 @@ App({
     currentCommunity: null,
     // 配置API地址
     apiUrls: [
-      'https://lovehome.xin/api',  // 主域名
-      'http://45.125.44.25:8080/api'  // 备用IP地址(直接指定端口)
+      'http://45.125.44.25:8080/api',  // 直接使用IP地址(可靠性更高)
+      'https://lovehome.xin/api'       // 域名地址(作为备用)
     ],
     // 当前使用的API地址索引
     currentApiUrlIndex: 0,
     // 实际使用的地址
-    baseUrl: 'https://lovehome.xin/api',
+    baseUrl: 'http://45.125.44.25:8080/api',
     // 网络状态
     networkAvailable: true,
     networkType: 'unknown',

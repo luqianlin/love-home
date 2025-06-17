@@ -24,13 +24,16 @@ const checkServerStatus = (successCallback, failCallback) => {
       return;
     }
     
-    // 解析域名部分用于日志
+    // 解析域名部分用于日志（使用简单字符串处理，避免URL构造函数）
     let domain = app.globalData.baseUrl;
     try {
-      const urlObj = new URL(app.globalData.baseUrl);
-      domain = urlObj.hostname;
+      // 小程序环境不支持URL构造函数，使用正则提取域名
+      const domainMatch = app.globalData.baseUrl.match(/^(https?:\/\/)?([^\/]+)/i);
+      if (domainMatch && domainMatch[2]) {
+        domain = domainMatch[2];
+      }
     } catch (e) {
-      console.error('URL解析失败:', e);
+      console.error('域名解析失败:', e);
     }
     
     console.log(`尝试连接健康检查端点: ${app.globalData.baseUrl}/health (域名: ${domain})`);
