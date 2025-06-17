@@ -29,6 +29,11 @@ const checkServerStatus = (successCallback, failCallback) => {
       url: `${app.globalData.baseUrl}/health`,
       method: 'GET',
       timeout: 10000, // 10秒超时
+      enableHttp2: true, // 启用HTTP/2
+      enableQuic: true, // 启用QUIC
+      enableCache: false, // 禁用缓存确保实时响应
+      // 禁用证书验证，解决自签名证书问题
+      sslVerify: false,
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           typeof successCallback === 'function' && successCallback(res);
@@ -37,6 +42,7 @@ const checkServerStatus = (successCallback, failCallback) => {
         }
       },
       fail: (err) => {
+        console.error('健康检查请求失败:', err);
         typeof failCallback === 'function' && failCallback(err);
       }
     });
@@ -107,6 +113,9 @@ const request = (options) => {
       data: options.data,
       header,
       timeout: options.timeout || 30000, // 设置30秒超时
+      sslVerify: false, // 禁用证书验证，解决自签名证书问题
+      enableHttp2: true, // 启用HTTP/2
+      enableCache: options.enableCache !== false, // 默认启用缓存
       success: (res) => {
         // 请求成功，处理响应
         if (res.statusCode >= 200 && res.statusCode < 300) {
